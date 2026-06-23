@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { doc, onSnapshot, setDoc, arrayUnion, collection, getDocs, deleteDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, getDoc, arrayUnion, collection, getDocs, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 
@@ -87,13 +87,38 @@ interface Props {
   roomId: string
 }
 
+async function updateStreak(roomId: string, userId: string, today: string) {
+  const ref = doc(db, 'rooms', roomId, 'streaks', userId)
+  const snap = await getDoc(ref)
+  const existing = snap.exists() ? snap.data() : { dates: [], streak: 0 }
+  const dates: string[] = existing.dates ?? []
+  if (dates.includes(today)) return existing.streak as number
+
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yStr = yesterday.toISOString().slice(0, 10)
+  const newStreak = dates.includes(yStr) ? (existing.streak as number) + 1 : 1
+
+  await setDoc(ref, { dates: arrayUnion(today), streak: newStreak }, { merge: true })
+  return newStreak
+}
+
 export default function DailyMission({ roomId }: Props) {
   const { user } = useAuthState()
   const [data, setData] = useState<MissionData | null>(null)
   const [uploading, setUploading] = useState<number | null>(null)
+  const [streak, setStreak] = useState(0)
   const fileRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
   const today = new Date().toISOString().slice(0, 10)
   const missions = getTodayMissions()
+
+  useEffect(() => {
+    if (!user) return
+    const ref = doc(db, 'rooms', roomId, 'streaks', user.uid)
+    return onSnapshot(ref, (snap) => {
+      if (snap.exists()) setStreak(snap.data().streak ?? 0)
+    })
+  }, [roomId, user])
 
   useEffect(() => {
     cleanupOldMissions(roomId, today)
@@ -119,6 +144,15 @@ export default function DailyMission({ roomId }: Props) {
           url,
         }),
       }, { merge: true })
+
+      // 3개 모두 완료 시 스트릭 업데이트
+      const currentUploads = new Set(
+        (data?.uploads ?? []).filter((u) => u.userId === user.uid).map((u) => u.missionIdx)
+      )
+      currentUploads.add(missionIdx)
+      if (currentUploads.size >= 3) {
+        await updateStreak(roomId, user.uid, today)
+      }
     } catch {
       alert('업로드 실패! Cloudinary 설정을 확인해주세요.')
     } finally {
@@ -140,9 +174,16 @@ export default function DailyMission({ roomId }: Props) {
           </span>
           <span className="text-xs text-gray-400">{today}</span>
         </div>
-        {completedAll && (
-          <span className="text-xs font-bold text-green-600 dark:text-green-400">🎉 오늘 미션 완료!</span>
-        )}
+        <div className="flex items-center gap-2">
+          {streak > 0 && (
+            <span className="flex items-center gap-1 text-sm font-black text-orange-500 dark:text-orange-400">
+              🔥 {streak}일
+            </span>
+          )}
+          {completedAll && (
+            <span className="text-xs font-bold text-green-600 dark:text-green-400">🎉 완료!</span>
+          )}
+        </div>
       </div>
 
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
