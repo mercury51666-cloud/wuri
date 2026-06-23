@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react'
 
+const isNotificationSupported = typeof window !== 'undefined' && 'Notification' in window
+
 export function useNotifications(roomName: string) {
-  const permissionRef = useRef(Notification.permission)
+  const permissionRef = useRef(isNotificationSupported ? Notification.permission : 'denied')
 
   const requestPermission = async () => {
+    if (!isNotificationSupported) return
     if (Notification.permission === 'default') {
       const result = await Notification.requestPermission()
       permissionRef.current = result
@@ -11,6 +14,7 @@ export function useNotifications(roomName: string) {
   }
 
   const notify = (authorName: string, message: string) => {
+    if (!isNotificationSupported) return
     if (permissionRef.current === 'granted' && document.hidden) {
       new Notification(`${roomName} — ${authorName}`, {
         body: message,
