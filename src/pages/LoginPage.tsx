@@ -1,0 +1,129 @@
+import { useState } from 'react'
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth'
+import { auth } from '../firebase'
+
+export default function LoginPage() {
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      if (isSignUp) {
+        if (!name.trim()) {
+          setError('이름을 입력해주세요.')
+          setLoading(false)
+          return
+        }
+        const { user } = await createUserWithEmailAndPassword(auth, email, password)
+        await updateProfile(user, { displayName: name.trim() })
+      } else {
+        await signInWithEmailAndPassword(auth, email, password)
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code
+      if (code === 'auth/email-already-in-use') setError('이미 사용 중인 이메일이에요.')
+      else if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential')
+        setError('이메일 또는 비밀번호가 틀렸어요.')
+      else if (code === 'auth/weak-password') setError('비밀번호는 6자 이상이어야 해요.')
+      else if (code === 'auth/invalid-email') setError('이메일 형식이 올바르지 않아요.')
+      else setError('오류가 발생했어요. 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-50 to-orange-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        {/* 로고 */}
+        <div className="text-center mb-10">
+          <div className="text-6xl mb-3">🏠</div>
+          <h1 className="text-3xl font-black text-violet-700 tracking-tight">우리방</h1>
+          <p className="text-gray-500 mt-1 text-sm">친한 친구들과 함께하는 우리만의 공간</p>
+        </div>
+
+        {/* 카드 */}
+        <div className="bg-white rounded-3xl shadow-xl p-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">
+            {isSignUp ? '회원가입' : '로그인'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">이름</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="친구들에게 보여질 이름"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 placeholder-gray-300"
+                  required
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">이메일</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 placeholder-gray-300"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">비밀번호</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="6자 이상"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 placeholder-gray-300"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-500 text-sm px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-violet-500 hover:bg-violet-600 disabled:bg-violet-300 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              {loading ? '처리 중...' : isSignUp ? '가입하기' : '시작하기'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => { setIsSignUp(!isSignUp); setError('') }}
+              className="text-sm text-violet-500 hover:text-violet-700 font-medium"
+            >
+              {isSignUp
+                ? '이미 계정이 있어요 → 로그인'
+                : '아직 계정이 없어요 → 회원가입'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
