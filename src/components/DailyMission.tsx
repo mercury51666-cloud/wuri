@@ -1,7 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { doc, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, arrayUnion, collection, getDocs, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
+
+async function cleanupOldMissions(roomId: string, today: string) {
+  try {
+    const metaRef = collection(db, 'rooms', roomId, 'meta')
+    const snapshot = await getDocs(metaRef)
+    const deletions = snapshot.docs
+      .filter((d) => d.id.startsWith('photoMission_') && d.id !== `photoMission_${today}`)
+      .map((d) => deleteDoc(d.ref))
+    await Promise.all(deletions)
+  } catch {
+    // 무시
+  }
+}
 
 const OBJECT_POOL = [
   { emoji: '🔴', theme: '빨간 물건' },
@@ -83,6 +96,7 @@ export default function DailyMission({ roomId }: Props) {
   const missions = getTodayMissions()
 
   useEffect(() => {
+    cleanupOldMissions(roomId, today)
     const ref = doc(db, 'rooms', roomId, 'meta', `photoMission_${today}`)
     return onSnapshot(ref, (snap) => {
       if (snap.exists()) setData(snap.data() as MissionData)
