@@ -7,14 +7,23 @@ export function useAuthState() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 모바일 redirect 로그인 결과 처리 (오류는 무시)
-    getRedirectResult(auth).catch(() => {})
+    let unsubscribe: (() => void) | undefined
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser)
-      setLoading(false)
-    })
-    return () => unsubscribe()
+    const init = async () => {
+      // redirect 로그인 완료를 먼저 기다린 뒤 auth 상태 구독
+      try {
+        await getRedirectResult(auth)
+      } catch {
+        // 무시
+      }
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser)
+        setLoading(false)
+      })
+    }
+
+    init()
+    return () => { unsubscribe?.() }
   }, [])
 
   return { user, loading }
