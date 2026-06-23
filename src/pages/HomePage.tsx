@@ -12,6 +12,7 @@ import { signOut } from 'firebase/auth'
 import { auth, db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
+import ProfileModal from '../components/ProfileModal'
 
 interface Room {
   id: string
@@ -27,6 +28,7 @@ export default function HomePage() {
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [showCreate, setShowCreate] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [roomEmoji, setRoomEmoji] = useState('🏠')
   const [creating, setCreating] = useState(false)
@@ -72,6 +74,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {/* 헤더 */}
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 px-4 py-4 flex items-center justify-between border-b border-violet-100 dark:border-gray-700">
         <div>
@@ -80,6 +83,15 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={toggleDark} className="text-lg px-1">{dark ? '☀️' : '🌙'}</button>
+          <button
+            onClick={() => setShowProfile(true)}
+            className="w-9 h-9 rounded-full overflow-hidden border-2 border-violet-300 dark:border-violet-600 flex-shrink-0 bg-gradient-to-br from-violet-400 to-pink-400 flex items-center justify-center"
+          >
+            {user?.photoURL
+              ? <img src={user.photoURL} alt="프로필" className="w-full h-full object-cover" />
+              : <span className="text-white text-xs font-bold">{(user?.displayName ?? user?.email ?? '?').slice(0, 2).toUpperCase()}</span>
+            }
+          </button>
           <button
             onClick={() => signOut(auth)}
             className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"

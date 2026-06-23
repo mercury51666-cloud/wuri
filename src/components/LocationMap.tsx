@@ -13,18 +13,23 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-function makeColorIcon(color: string) {
+function makeProfileIcon(photoURL: string, name: string, color: string) {
+  const initials = name.slice(0, 2).toUpperCase()
+  const inner = photoURL
+    ? `<img src="${photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+    : `<span style="color:white;font-size:13px;font-weight:bold;">${initials}</span>`
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:36px;height:36px;border-radius:50% 50% 50% 0;
+      width:42px;height:42px;border-radius:50%;
       background:${color};border:3px solid white;
-      box-shadow:0 2px 8px rgba(0,0,0,0.3);
-      transform:rotate(-45deg);
-    "></div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
+      box-shadow:0 2px 10px rgba(0,0,0,0.35);
+      display:flex;align-items:center;justify-content:center;
+      overflow:hidden;
+    ">${inner}</div>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 42],
+    popupAnchor: [0, -44],
   })
 }
 
@@ -46,6 +51,7 @@ function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
 interface LocationData {
   userId: string
   userName: string
+  photoURL: string
   lat: number
   lng: number
   updatedAt: number
@@ -101,6 +107,7 @@ export default function LocationMap({ roomId }: Props) {
         await setDoc(doc(db, 'rooms', roomId, 'locations', user.uid), {
           userId: user.uid,
           userName: user.displayName ?? user.email?.split('@')[0] ?? '친구',
+          photoURL: user.photoURL ?? '',
           lat,
           lng,
           updatedAt: Date.now(),
@@ -184,7 +191,7 @@ export default function LocationMap({ roomId }: Props) {
           <Marker
             key={loc.userId}
             position={[loc.lat, loc.lng]}
-            icon={makeColorIcon(colorMap[loc.userId] ?? COLORS[0])}
+            icon={makeProfileIcon(loc.photoURL, loc.userName, colorMap[loc.userId] ?? COLORS[0])}
           >
             <Popup>
               <div className="text-center min-w-[80px]">

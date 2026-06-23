@@ -21,6 +21,7 @@ interface Message {
   text: string
   authorId: string
   authorName: string
+  authorPhotoURL?: string
   createdAt: { seconds: number } | null
 }
 
@@ -90,6 +91,7 @@ export default function RoomPage() {
         text: text.trim(),
         authorId: user.uid,
         authorName: user.displayName || '친구',
+        authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
       })
       setText('')
@@ -207,8 +209,19 @@ export default function RoomPage() {
                 return (
                   <div key={msg.id} className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                     {!isMine && (
-                      <div className="w-8 h-8 rounded-full bg-violet-200 dark:bg-violet-800 flex items-center justify-center text-sm font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-1">
-                        {msg.authorName[0]}
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-200 dark:bg-violet-800 flex items-center justify-center text-sm font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-1">
+                        {msg.authorPhotoURL
+                          ? <img src={msg.authorPhotoURL} alt={msg.authorName} className="w-full h-full object-cover" />
+                          : msg.authorName[0]
+                        }
+                      </div>
+                    )}
+                    {isMine && (
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-200 dark:bg-violet-800 flex items-center justify-center text-sm font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-1">
+                        {user?.photoURL
+                          ? <img src={user.photoURL} alt="나" className="w-full h-full object-cover" />
+                          : (user?.displayName ?? '?')[0]
+                        }
                       </div>
                     )}
                     <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
