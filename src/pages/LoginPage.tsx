@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth'
 import { auth } from '../firebase'
+
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
@@ -9,12 +11,16 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setError('')
     setLoading(true)
+    const provider = new GoogleAuthProvider()
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider())
+      if (isMobile) {
+        await signInWithRedirect(auth, provider)
+      } else {
+        await signInWithPopup(auth, provider)
+      }
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
       if (code !== 'auth/popup-closed-by-user') setError('로그인에 실패했어요. 다시 시도해주세요.')
-    } finally {
       setLoading(false)
     }
   }
