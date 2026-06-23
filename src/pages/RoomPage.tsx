@@ -14,6 +14,7 @@ import BalanceGame from '../components/games/BalanceGame'
 import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
+import LocationMap from '../components/LocationMap'
 
 interface Message {
   id: string
@@ -31,7 +32,7 @@ interface Room {
 
 type Tab = 'chat' | 'photo' | 'game' | 'home'
 type GameTab = 'penalty' | 'balance'
-type HomeTab = 'mascot' | 'mission' | 'stats'
+type HomeTab = 'mascot' | 'mission' | 'stats' | 'location'
 
 const TABS: { id: Tab; emoji: string; label: string }[] = [
   { id: 'chat',  emoji: '💬', label: '채팅' },
@@ -283,6 +284,7 @@ export default function RoomPage() {
                 { id: 'mascot' as HomeTab, label: '🐾 마스코트' },
                 { id: 'mission' as HomeTab, label: '🎯 미션' },
                 { id: 'stats' as HomeTab, label: '📊 통계' },
+                { id: 'location' as HomeTab, label: '📍 위치' },
               ]).map((t) => (
                 <button
                   key={t.id}
@@ -300,6 +302,7 @@ export default function RoomPage() {
               {homeTab === 'mascot' && <Mascot roomId={roomId} totalMessages={messages.length} />}
               {homeTab === 'mission' && <DailyMission roomId={roomId} />}
               {homeTab === 'stats' && <RoomStats roomId={roomId} />}
+              {homeTab === 'location' && <LocationMap roomId={roomId} />}
             </div>
           </div>
         )}

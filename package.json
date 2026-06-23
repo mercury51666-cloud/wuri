@@ -18,9 +18,12 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
+    "@types/leaflet": "^1.9.21",
     "firebase": "^12.15.0",
+    "leaflet": "^1.9.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.18.0"
   }
 }
