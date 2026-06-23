@@ -399,7 +399,8 @@ export default function RoomPage() {
                   />
                 </label>
                 <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="메시지 보내기..."
-                  className="flex-1 bg-gray-100 dark:bg-white/10 border border-transparent dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                  className="flex-1 bg-gray-100 dark:bg-white/10 border border-transparent dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                  style={{ fontSize: '16px' }}
                 />
                 <button type="submit" disabled={sending || !text.trim()}
                   className="w-10 h-10 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
