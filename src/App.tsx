@@ -15,6 +15,16 @@ function RequireAuth({ user, children }: { user: User | null; children: ReactNod
   return <>{children}</>
 }
 
+// 로그인 후 원래 가려던 경로로 이동
+function LoginRoute({ user }: { user: User | null }) {
+  const location = useLocation()
+  if (user) {
+    const from = (location.state as { from?: string })?.from ?? '/'
+    return <Navigate to={from} replace />
+  }
+  return <LoginPage />
+}
+
 function App() {
   const { user, loading } = useAuthState()
 
@@ -35,7 +45,7 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={user ? <Navigate to="/" replace /> : <LoginPage />}
+          element={<LoginRoute user={user} />}
         />
         <Route
           path="/"

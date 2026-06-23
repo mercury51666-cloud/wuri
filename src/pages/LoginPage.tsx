@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { auth } from '../firebase'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state as { from?: string })?.from ?? '/'
 
   const handleGoogle = async () => {
     setError('')
@@ -17,7 +13,6 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
       await signInWithPopup(auth, provider)
-      navigate(from, { replace: true })
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
       if (code !== 'auth/popup-closed-by-user') setError('로그인에 실패했어요. 다시 시도해주세요.')
