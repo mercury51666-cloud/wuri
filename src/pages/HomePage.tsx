@@ -16,6 +16,7 @@ import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import ProfileModal from '../components/ProfileModal'
 import OnboardingModal from '../components/OnboardingModal'
+import InstallBanner from '../components/InstallBanner'
 
 interface Room {
   id: string
@@ -161,7 +162,8 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="relative max-w-md mx-auto px-4 py-6 space-y-4">
+      <main className="relative max-w-md mx-auto pt-4 pb-6 space-y-4">
+        <InstallBanner />
         <p className="text-gray-500 text-sm">안녕하세요, <span className="text-violet-500 dark:text-violet-400 font-medium">{user?.displayName || '친구'}</span>님</p>
 
         <button
