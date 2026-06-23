@@ -1,22 +1,24 @@
-import { useState } from 'react'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { useState, useEffect } from 'react'
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { auth } from '../firebase'
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(() => setLoading(false))
+      .catch(() => {
+        setError('구글 로그인에 실패했어요. 다시 시도해주세요.')
+        setLoading(false)
+      })
+  }, [])
 
   const handleGoogle = async () => {
     setError('')
     setLoading(true)
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider())
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code
-      if (code !== 'auth/popup-closed-by-user') setError('구글 로그인에 실패했어요. 다시 시도해주세요.')
-    } finally {
-      setLoading(false)
-    }
+    await signInWithRedirect(auth, new GoogleAuthProvider())
   }
 
   return (
