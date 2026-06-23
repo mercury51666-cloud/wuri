@@ -54,6 +54,7 @@ export default function RoomPage() {
   const [sending, setSending] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [gameTab, setGameTab] = useState<GameTab>('penalty')
@@ -132,33 +133,65 @@ export default function RoomPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
+      {/* 햄버거 사이드 메뉴 */}
+      {showMenu && (
+        <div className="fixed inset-0 z-40 flex">
+          <div className="w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col py-6 px-4 gap-2 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <div className="w-10 h-10 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl">
+                {room.emoji}
+              </div>
+              <div>
+                <p className="font-bold text-gray-800 dark:text-white text-sm">{room.name}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">멤버 {room.memberIds.length}명</p>
+              </div>
+            </div>
+            {TABS.map((tab) => (
+              <button key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setShowMenu(false) }}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors text-left ${
+                  activeTab === tab.id
+                    ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
+                }`}
+              >
+                <span className="text-lg">{tab.emoji}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+            <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
+              <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                <span>🔗</span><span>친구 초대</span>
+              </button>
+              <button onClick={toggleDark} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                <span>{dark ? '☀️' : '🌙'}</span><span>{dark ? '라이트 모드' : '다크 모드'}</span>
+              </button>
+              {isJoined && (
+                <button onClick={() => { setShowLeave(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                  <span>🚪</span><span>방 나가기</span>
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={() => setShowMenu(false)} />
+        </div>
+      )}
+
       {/* 헤더 */}
       <header className="bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
         <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-xl transition-colors">‹</button>
-          <div className="w-9 h-9 bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 rounded-xl flex items-center justify-center text-xl">
-            {room.emoji}
-          </div>
+          <button onClick={() => setShowMenu(true)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors shrink-0">
+            <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+            <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+            <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+          </button>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-800 dark:text-white truncate">{room.name}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">멤버 {room.memberIds.length}명</p>
+            <p className="font-bold text-gray-800 dark:text-white truncate">
+              {TABS.find(t => t.id === activeTab)?.emoji} {TABS.find(t => t.id === activeTab)?.label}
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{room.name}</p>
           </div>
-          <button onClick={toggleDark} className="text-lg px-1">{dark ? '☀️' : '🌙'}</button>
-          <button onClick={() => setShowInvite(true)} className="text-xs bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-500/30 font-medium px-3 py-1.5 rounded-lg hover:bg-violet-200 dark:hover:bg-violet-500/30 transition-colors">초대</button>
-          {isJoined && (
-            <button onClick={() => setShowLeave(true)} className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 px-2 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">나가기</button>
-          )}
-        </div>
-        <div className="flex border-t border-gray-100 dark:border-white/10">
-          {TABS.map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1 transition-colors ${
-                activeTab === tab.id ? 'text-violet-600 dark:text-violet-400 border-b-2 border-violet-500' : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400'
-              }`}
-            >
-              <span>{tab.emoji}</span><span>{tab.label}</span>
-            </button>
-          ))}
+          <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">홈</button>
         </div>
       </header>
 
