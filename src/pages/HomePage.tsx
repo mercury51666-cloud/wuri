@@ -146,8 +146,16 @@ export default function HomePage() {
         </h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={notifEnabled ? disableNotifications : enableNotifications}
-            className={`text-lg px-1 transition-opacity ${permission === 'denied' ? 'opacity-30' : ''}`}
+            onClick={async () => {
+              if (notifEnabled) {
+                await disableNotifications()
+              } else if (permission === 'denied') {
+                alert('알림이 차단되어 있어요.\n\n아이폰: 설정 → Safari → 웹사이트 알림 → WURI → 허용\n안드로이드: 설정 → 앱 → Chrome → 알림 → 허용')
+              } else {
+                await enableNotifications()
+              }
+            }}
+            className="text-lg px-1 active:scale-90 transition-all"
             title={notifEnabled ? '알림 끄기' : '알림 켜기'}
           >
             {notifEnabled ? '🔔' : '🔕'}
