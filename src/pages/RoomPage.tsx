@@ -14,6 +14,10 @@ import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
 import { useUserProfiles } from '../hooks/useUserProfiles'
 
+interface Reaction {
+  [emoji: string]: string[] // emoji -> uid[]
+}
+
 interface Message {
   id: string
   text: string
@@ -21,6 +25,7 @@ interface Message {
   authorName: string
   authorPhotoURL?: string
   createdAt: { seconds: number } | null
+  reactions?: Reaction
 }
 
 interface Room {
@@ -54,8 +59,23 @@ export default function RoomPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
+  const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
+
+  const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
+
+  const toggleReaction = async (msgId: string, emoji: string) => {
+    if (!user || !roomId) return
+    const msgRef = doc(db, 'rooms', roomId, 'messages', msgId)
+    const msg = messages.find((m) => m.id === msgId)
+    const current = msg?.reactions?.[emoji] ?? []
+    const hasReacted = current.includes(user.uid)
+    await updateDoc(msgRef, {
+      [`reactions.${emoji}`]: hasReacted ? arrayRemove(user.uid) : arrayUnion(user.uid),
+    })
+    setReactionTarget(null)
+  }
 
   useMessageNotifications(messages, user?.uid, room?.name ?? '우리방')
 
@@ -248,7 +268,7 @@ export default function RoomPage() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {activeTab === 'chat' && (
           <>
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" onClick={() => setReactionTarget(null)}>
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <div className="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-500/10 flex items-center justify-center text-3xl">💬</div>
@@ -286,10 +306,53 @@ export default function RoomPage() {
                       )}
                       <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
-                        <div className={`px-4 py-2.5 rounded-2xl text-sm ${
-                          isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm'
-                                 : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'
-                        }`}>{msg.text}</div>
+                        <div
+                          className={`relative px-4 py-2.5 rounded-2xl text-sm cursor-pointer select-none ${
+                            isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm'
+                                   : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'
+                          }`}
+                          onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
+                          onTouchStart={() => {
+                            const t = setTimeout(() => setReactionTarget(reactionTarget === msg.id ? null : msg.id), 500)
+                            const cancel = () => clearTimeout(t)
+                            window.addEventListener('touchend', cancel, { once: true })
+                            window.addEventListener('touchmove', cancel, { once: true })
+                          }}
+                        >
+                          {msg.text}
+                        </div>
+
+                        {/* 리액션 팝업 */}
+                        {reactionTarget === msg.id && (
+                          <div className={`flex gap-1 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-2xl px-2 py-1.5 shadow-xl ${isMine ? 'mr-1' : 'ml-1'}`}>
+                            {REACTION_EMOJIS.map((emoji) => (
+                              <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
+                                className="text-xl w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 active:scale-90 transition-all"
+                              >{emoji}</button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 달린 리액션 표시 */}
+                        {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                          <div className={`flex flex-wrap gap-1 ${isMine ? 'justify-end mr-1' : 'ml-1'}`}>
+                            {Object.entries(msg.reactions)
+                              .filter(([, uids]) => uids.length > 0)
+                              .map(([emoji, uids]) => (
+                                <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
+                                  className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-all active:scale-95 ${
+                                    user && uids.includes(user.uid)
+                                      ? 'bg-violet-100 dark:bg-violet-500/20 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300'
+                                      : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400'
+                                  }`}
+                                >
+                                  <span>{emoji}</span>
+                                  <span className="font-semibold">{uids.length}</span>
+                                </button>
+                              ))}
+                          </div>
+                        )}
+
                         <span className="text-xs text-gray-300 dark:text-gray-600 px-1">{formatTime(msg.createdAt)}</span>
                       </div>
                     </div>
