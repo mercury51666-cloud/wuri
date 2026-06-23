@@ -14,6 +14,7 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
       if (code !== 'auth/popup-closed-by-user') setError('로그인에 실패했어요. 다시 시도해주세요.')
+    } finally {
       setLoading(false)
     }
   }
