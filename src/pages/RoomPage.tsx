@@ -8,9 +8,6 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useMessageNotifications } from '../hooks/useNotifications'
-import PhotoFeed from '../components/PhotoFeed'
-import PenaltyKick from '../components/games/PenaltyKick'
-import BalanceGame from '../components/games/BalanceGame'
 import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
@@ -31,15 +28,14 @@ interface Room {
   memberIds: string[]
 }
 
-type Tab = 'chat' | 'photo' | 'game' | 'home'
-type GameTab = 'penalty' | 'balance'
-type HomeTab = 'mascot' | 'mission' | 'stats' | 'location'
+type Tab = 'chat' | 'mascot' | 'mission' | 'location' | 'stats'
 
 const TABS: { id: Tab; emoji: string; label: string }[] = [
-  { id: 'chat',  emoji: '💬', label: '채팅' },
-  { id: 'photo', emoji: '📷', label: '사진' },
-  { id: 'game',  emoji: '🎮', label: '게임' },
-  { id: 'home',  emoji: '✨', label: '우리방' },
+  { id: 'chat',     emoji: '💬', label: '채팅' },
+  { id: 'mascot',   emoji: '🐾', label: '마스코트' },
+  { id: 'mission',  emoji: '🎯', label: '미션' },
+  { id: 'location', emoji: '📍', label: '위치' },
+  { id: 'stats',    emoji: '📊', label: '통계' },
 ]
 
 export default function RoomPage() {
@@ -57,8 +53,6 @@ export default function RoomPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
-  const [gameTab, setGameTab] = useState<GameTab>('penalty')
-  const [homeTab, setHomeTab] = useState<HomeTab>('mascot')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useMessageNotifications(messages, user?.uid, room?.name ?? '우리방')
@@ -252,41 +246,10 @@ export default function RoomPage() {
           </>
         )}
 
-        {activeTab === 'photo' && roomId && <div className="flex-1 overflow-y-auto"><PhotoFeed roomId={roomId} /></div>}
-
-        {activeTab === 'game' && roomId && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="flex bg-white dark:bg-[#0d0d0d] border-b border-gray-100 dark:border-white/10">
-              <button onClick={() => setGameTab('penalty')} className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1 transition-colors ${gameTab === 'penalty' ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500' : 'text-gray-400 dark:text-gray-600'}`}>⚽ 페널티킥</button>
-              <button onClick={() => setGameTab('balance')} className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1 transition-colors ${gameTab === 'balance' ? 'text-orange-600 dark:text-orange-400 border-b-2 border-orange-500' : 'text-gray-400 dark:text-gray-600'}`}>⚖️ 밸런스게임</button>
-            </div>
-            {gameTab === 'penalty' && <PenaltyKick roomId={roomId} />}
-            {gameTab === 'balance' && <BalanceGame roomId={roomId} />}
-          </div>
-        )}
-
-        {activeTab === 'home' && roomId && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="flex bg-white dark:bg-[#0d0d0d] border-b border-gray-100 dark:border-white/10">
-              {([
-                { id: 'mascot' as HomeTab, label: '🐾 마스코트' },
-                { id: 'mission' as HomeTab, label: '🎯 미션' },
-                { id: 'stats' as HomeTab, label: '📊 통계' },
-                { id: 'location' as HomeTab, label: '📍 위치' },
-              ]).map((t) => (
-                <button key={t.id} onClick={() => setHomeTab(t.id)}
-                  className={`flex-1 py-3 text-xs font-semibold transition-colors ${homeTab === t.id ? 'text-violet-600 dark:text-violet-400 border-b-2 border-violet-500' : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400'}`}
-                >{t.label}</button>
-              ))}
-            </div>
-            <div className="p-4">
-              {homeTab === 'mascot' && <Mascot roomId={roomId} totalMessages={messages.length} />}
-              {homeTab === 'mission' && <DailyMission roomId={roomId} />}
-              {homeTab === 'stats' && <RoomStats roomId={roomId} />}
-              {homeTab === 'location' && <LocationMap roomId={roomId} />}
-            </div>
-          </div>
-        )}
+        {activeTab === 'mascot' && roomId && <div className="flex-1 overflow-y-auto p-4"><Mascot roomId={roomId} totalMessages={messages.length} /></div>}
+        {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
+        {activeTab === 'location' && roomId && <div className="flex-1 overflow-y-auto p-4"><LocationMap roomId={roomId} /></div>}
+        {activeTab === 'stats' && roomId && <div className="flex-1 overflow-y-auto p-4"><RoomStats roomId={roomId} /></div>}
       </div>
 
       {showLeave && (
