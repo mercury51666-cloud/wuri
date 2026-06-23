@@ -21,6 +21,7 @@ interface Reaction {
 interface Message {
   id: string
   text: string
+  imageURL?: string
   authorId: string
   authorName: string
   authorPhotoURL?: string
@@ -112,6 +113,30 @@ export default function RoomPage() {
         createdAt: serverTimestamp(),
       })
       setText('')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const sendImage = async (file: File) => {
+    if (!user || !roomId) return
+    setSending(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET)
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST', body: formData,
+      })
+      const data = await res.json()
+      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
+        text: '',
+        imageURL: data.secure_url,
+        authorId: user.uid,
+        authorName: user.displayName || '친구',
+        authorPhotoURL: user.photoURL || '',
+        createdAt: serverTimestamp(),
+      })
     } finally {
       setSending(false)
     }
@@ -307,9 +332,10 @@ export default function RoomPage() {
                       <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
                         <div
-                          className={`relative px-4 py-2.5 rounded-2xl text-sm cursor-pointer select-none ${
-                            isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm'
-                                   : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'
+                          className={`relative cursor-pointer select-none overflow-hidden ${
+                            msg.imageURL
+                              ? 'rounded-2xl'
+                              : `px-4 py-2.5 rounded-2xl text-sm ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'}`
                           }`}
                           onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
                           onTouchStart={() => {
@@ -319,7 +345,10 @@ export default function RoomPage() {
                             window.addEventListener('touchmove', cancel, { once: true })
                           }}
                         >
-                          {msg.text}
+                          {msg.imageURL
+                            ? <img src={msg.imageURL} alt="사진" className="max-w-[220px] max-h-[280px] object-cover rounded-2xl" />
+                            : msg.text
+                          }
                         </div>
 
                         {/* 리액션 팝업 */}
@@ -361,14 +390,20 @@ export default function RoomPage() {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="border-t border-gray-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md px-4 py-3">
+            <div className="border-t border-gray-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md px-4 py-3 safe-bottom">
               <form onSubmit={sendMessage} className="flex items-center gap-2">
+                <label className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 active:scale-90 flex items-center justify-center shrink-0 cursor-pointer transition-all">
+                  <span className="text-lg">🖼️</span>
+                  <input type="file" accept="image/*" className="hidden" disabled={sending}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
+                  />
+                </label>
                 <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="메시지 보내기..."
                   className="flex-1 bg-gray-100 dark:bg-white/10 border border-transparent dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
                 />
                 <button type="submit" disabled={sending || !text.trim()}
                   className="w-10 h-10 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
-                >→</button>
+                >{sending ? '⏳' : '→'}</button>
               </form>
             </div>
           </>
