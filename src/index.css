@@ -17,3 +17,7 @@
 .page-enter { animation: fadeUp 0.22s ease-out both; }
 .page-fade  { animation: fadeIn 0.18s ease-out both; }
 .menu-enter { animation: slideInLeft 0.2s ease-out both; }
+
+/* iOS Safe Area */
+.safe-top    { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

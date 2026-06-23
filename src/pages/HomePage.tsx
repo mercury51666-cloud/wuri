@@ -138,7 +138,7 @@ export default function HomePage() {
       <div className="absolute w-72 h-72 rounded-full bg-violet-400 opacity-10 dark:opacity-10 blur-3xl top-0 left-1/2 -translate-x-1/2 pointer-events-none" />
 
       {/* 헤더 */}
-      <header className="relative sticky top-0 z-10 px-4 py-4 flex items-center justify-between border-b border-violet-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md">
+      <header className="safe-top relative sticky top-0 z-10 px-4 py-4 flex items-center justify-between border-b border-violet-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md">
         <h1 className="text-xl font-black text-violet-700 dark:text-white tracking-tight">
           WU<span className="text-violet-400">RI</span>
         </h1>

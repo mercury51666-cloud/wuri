@@ -221,7 +221,7 @@ export default function RoomPage() {
       )}
 
       {/* 헤더 */}
-      <header className="bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
+      <header className="safe-top bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
         <div className="px-4 py-3 flex items-center gap-3">
           <button onClick={() => setShowMenu(true)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors shrink-0">
             <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
