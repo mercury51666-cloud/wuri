@@ -5,14 +5,6 @@ import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import RoomPage from './pages/RoomPage'
 
-import type { User } from 'firebase/auth'
-
-function isVerified(user: User | null) {
-  if (!user) return false
-  const isGoogle = user.providerData.some((p) => p.providerId === 'google.com')
-  return isGoogle || user.emailVerified
-}
-
 function App() {
   const { user, loading } = useAuthState()
 
@@ -33,15 +25,15 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={isVerified(user) ? <Navigate to="/" replace /> : <LoginPage />}
+          element={user ? <Navigate to="/" replace /> : <LoginPage />}
         />
         <Route
           path="/"
-          element={isVerified(user) ? <HomePage /> : <Navigate to="/login" replace />}
+          element={user ? <HomePage /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/room/:roomId"
-          element={isVerified(user) ? <RoomPage /> : <Navigate to="/login" replace />}
+          element={user ? <RoomPage /> : <Navigate to="/login" replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
