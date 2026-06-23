@@ -62,14 +62,14 @@ export default function RoomStats({ roomId }: Props) {
       </div>
 
       {/* 멤버별 순위 */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+      <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10">
           <h3 className="font-bold text-gray-700 dark:text-gray-200 text-sm">💬 메시지 많이 보낸 사람</h3>
         </div>
         {stats.length === 0 ? (
-          <p className="text-center text-gray-400 py-6 text-sm">아직 메시지가 없어요</p>
+          <p className="text-center text-gray-400 dark:text-gray-600 py-6 text-sm">아직 메시지가 없어요</p>
         ) : (
-          <div className="divide-y divide-gray-50 dark:divide-gray-700">
+          <div className="divide-y divide-gray-50 dark:divide-white/5">
             {stats.map((s, i) => {
               const pct = total > 0 ? Math.round((s.count / total) * 100) : 0
               return (
@@ -79,10 +79,10 @@ export default function RoomStats({ roomId }: Props) {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{s.name}</span>
-                      <span className="text-xs text-gray-400 shrink-0 ml-2">{s.count}개 ({pct}%)</span>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">{s.name}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 ml-2">{s.count}개 ({pct}%)</span>
                     </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                    <div className="w-full bg-gray-100 dark:bg-white/10 rounded-full h-1.5">
                       <div
                         className="bg-gradient-to-r from-violet-400 to-pink-400 h-1.5 rounded-full transition-all"
                         style={{ width: `${pct}%` }}

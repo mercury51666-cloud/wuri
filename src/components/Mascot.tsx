@@ -88,7 +88,7 @@ export default function Mascot({ roomId, totalMessages }: Props) {
     : 100
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm">
+    <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-3xl p-5 shadow-sm dark:shadow-none">
       {/* 마스코트 */}
       <div className="text-center">
         <button
@@ -109,19 +109,19 @@ export default function Mascot({ roomId, totalMessages }: Props) {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="이름 입력..."
-              className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-400 w-32"
+              className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 w-32"
               autoFocus
             />
-            <button onClick={saveName} className="text-xs bg-violet-500 text-white px-3 py-1.5 rounded-lg">저장</button>
+            <button onClick={saveName} className="text-xs bg-violet-500 active:scale-95 text-white px-3 py-1.5 rounded-lg transition-all">저장</button>
             <button onClick={() => setEditName(false)} className="text-xs text-gray-400 px-2">취소</button>
           </div>
         ) : (
           <button onClick={() => { setEditName(true); setNewName(mascot.name) }}
-            className="text-base font-black text-gray-800 dark:text-gray-100 hover:text-violet-500 transition-colors">
+            className="text-base font-black text-gray-800 dark:text-white hover:text-violet-500 dark:hover:text-violet-400 transition-colors">
             {mascot.name} ✏️
           </button>
         )}
-        <p className="text-xs text-violet-500 font-medium">{level.name} 단계 · {level.desc}</p>
+        <p className="text-xs text-violet-500 dark:text-violet-400 font-medium mt-0.5">{level.name} 단계 · {level.desc}</p>
       </div>
 
       {/* 성장 게이지 */}
@@ -130,7 +130,7 @@ export default function Mascot({ roomId, totalMessages }: Props) {
           <span>메시지 {totalMessages}개</span>
           {next ? <span>다음: {next.emoji} {next.name} ({next.min}개)</span> : <span>최고 레벨!</span>}
         </div>
-        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
+        <div className="w-full bg-gray-100 dark:bg-white/10 rounded-full h-2.5">
           <div
             className="bg-gradient-to-r from-violet-400 to-pink-400 h-2.5 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}

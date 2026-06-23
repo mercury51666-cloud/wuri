@@ -197,7 +197,7 @@ export default function DailyMission({ roomId }: Props) {
           const isUploading = uploading === idx
 
           return (
-            <div key={idx} className="bg-white dark:bg-gray-800 rounded-2xl p-3 border border-amber-100 dark:border-amber-800/50">
+            <div key={idx} className="bg-white dark:bg-white/5 rounded-2xl p-3 border border-amber-100 dark:border-white/10">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{mission.emoji}</span>
