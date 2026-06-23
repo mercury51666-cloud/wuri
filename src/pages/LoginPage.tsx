@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [verifyPending, setVerifyPending] = useState(false)
@@ -23,15 +24,16 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
+    if (isSignUp) {
+      if (!name.trim()) { setError('이름을 입력해주세요.'); return }
+      if (password !== passwordConfirm) { setError('비밀번호가 일치하지 않아요.'); return }
+      if (password.length < 6) { setError('비밀번호는 6자 이상이어야 해요.'); return }
+    }
+
+    setLoading(true)
     try {
       if (isSignUp) {
-        if (!name.trim()) {
-          setError('이름을 입력해주세요.')
-          setLoading(false)
-          return
-        }
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         await updateProfile(user, { displayName: name.trim() })
         await sendEmailVerification(user)
@@ -48,7 +50,7 @@ export default function LoginPage() {
       const code = (err as { code?: string }).code
       if (code === 'auth/email-already-in-use') setError('이미 사용 중인 이메일이에요.')
       else if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential')
-        setError('이메일 또는 비밀번호가 틀렸어요.')
+        setError('아이디 또는 비밀번호가 틀렸어요.')
       else if (code === 'auth/weak-password') setError('비밀번호는 6자 이상이어야 해요.')
       else if (code === 'auth/invalid-email') setError('이메일 형식이 올바르지 않아요.')
       else setError('오류가 발생했어요. 다시 시도해주세요.')
@@ -61,8 +63,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
+      await signInWithPopup(auth, new GoogleAuthProvider())
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
       if (code !== 'auth/popup-closed-by-user') setError('구글 로그인에 실패했어요.')
@@ -84,12 +85,18 @@ export default function LoginPage() {
     }
   }
 
+  const switchMode = () => {
+    setIsSignUp(!isSignUp)
+    setError('')
+    setPasswordConfirm('')
+  }
+
   if (verifyPending) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-50 to-orange-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <div className="text-6xl mb-3">📧</div>
+            <div className="text-6xl mb-3">🏠</div>
             <h1 className="text-3xl font-black text-violet-700 tracking-tight">우리방</h1>
           </div>
           <div className="bg-white rounded-3xl shadow-xl p-8 text-center">
@@ -98,19 +105,14 @@ export default function LoginPage() {
             <p className="text-sm text-gray-500 mb-1">
               <span className="font-medium text-violet-600">{email}</span>로
             </p>
-            <p className="text-sm text-gray-500 mb-6">
-              인증 링크를 보냈어요. 링크를 클릭한 후 로그인해주세요.
-            </p>
+            <p className="text-sm text-gray-500 mb-6">인증 링크를 보냈어요. 링크를 클릭한 후 로그인해주세요.</p>
             <button
               onClick={() => { setVerifyPending(false); setIsSignUp(false) }}
               className="w-full bg-violet-500 hover:bg-violet-600 text-white font-bold py-3 rounded-xl transition-colors mb-3"
             >
               로그인하러 가기
             </button>
-            <button
-              onClick={resendVerification}
-              className="text-sm text-violet-500 hover:text-violet-700 font-medium"
-            >
+            <button onClick={resendVerification} className="text-sm text-violet-500 hover:text-violet-700 font-medium">
               {resent ? '✓ 재전송 완료!' : '인증 메일 다시 보내기'}
             </button>
             {error && <p className="text-red-500 text-xs mt-3">{error}</p>}
@@ -123,7 +125,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-50 to-orange-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div className="text-6xl mb-3">🏠</div>
           <h1 className="text-3xl font-black text-violet-700 tracking-tight">우리방</h1>
           <p className="text-gray-500 mt-1 text-sm">친한 친구들과 함께하는 우리만의 공간</p>
@@ -134,7 +136,7 @@ export default function LoginPage() {
             {isSignUp ? '회원가입' : '로그인'}
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {isSignUp && (
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">이름</label>
@@ -148,8 +150,9 @@ export default function LoginPage() {
                 />
               </div>
             )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">이메일</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">아이디 (이메일)</label>
               <input
                 type="email"
                 value={email}
@@ -159,6 +162,7 @@ export default function LoginPage() {
                 required
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">비밀번호</label>
               <input
@@ -170,6 +174,27 @@ export default function LoginPage() {
                 required
               />
             </div>
+
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">비밀번호 확인</label>
+                <input
+                  type="password"
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
+                  placeholder="비밀번호 다시 입력"
+                  className={`w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-violet-400 text-gray-800 placeholder-gray-300 ${
+                    passwordConfirm && password !== passwordConfirm
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {passwordConfirm && password !== passwordConfirm && (
+                  <p className="text-xs text-red-500 mt-1 ml-1">비밀번호가 일치하지 않아요</p>
+                )}
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 text-red-500 text-sm px-4 py-3 rounded-xl">
@@ -186,7 +211,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
             <span className="text-xs text-gray-400">또는</span>
             <div className="flex-1 h-px bg-gray-200" />
@@ -195,7 +220,7 @@ export default function LoginPage() {
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className="mt-4 w-full flex items-center justify-center gap-3 border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-3 rounded-xl transition-colors disabled:opacity-50"
+            className="mt-3 w-full flex items-center justify-center gap-3 border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-3 rounded-xl transition-colors disabled:opacity-50"
           >
             <svg width="18" height="18" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -207,13 +232,8 @@ export default function LoginPage() {
           </button>
 
           <div className="mt-5 text-center">
-            <button
-              onClick={() => { setIsSignUp(!isSignUp); setError('') }}
-              className="text-sm text-violet-500 hover:text-violet-700 font-medium"
-            >
-              {isSignUp
-                ? '이미 계정이 있어요 → 로그인'
-                : '아직 계정이 없어요 → 회원가입'}
+            <button onClick={switchMode} className="text-sm text-violet-500 hover:text-violet-700 font-medium">
+              {isSignUp ? '이미 계정이 있어요 → 로그인' : '아직 계정이 없어요 → 회원가입'}
             </button>
           </div>
         </div>
