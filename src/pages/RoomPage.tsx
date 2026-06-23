@@ -13,6 +13,7 @@ import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
 import { useUserProfiles } from '../hooks/useUserProfiles'
+import { useFCMToken } from '../hooks/useFCMToken'
 
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
@@ -63,6 +64,7 @@ export default function RoomPage() {
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
+  const { permission, requestPermission } = useFCMToken(user?.uid)
 
   const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
 
@@ -100,19 +102,38 @@ export default function RoomPage() {
     if (activeTab === 'chat') bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, activeTab])
 
+  const notifyMembers = (msgText: string, imgURL?: string) => {
+    if (!roomId || !room || !user) return
+    const otherMembers = room.memberIds.filter((id) => id !== user.uid)
+    if (!otherMembers.length) return
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomId,
+        senderName: user.displayName || '친구',
+        text: msgText,
+        imageURL: imgURL,
+        memberIds: otherMembers,
+      }),
+    }).catch(() => {})
+  }
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !roomId || !text.trim()) return
     setSending(true)
+    const msgText = text.trim()
     try {
       await addDoc(collection(db, 'rooms', roomId, 'messages'), {
-        text: text.trim(),
+        text: msgText,
         authorId: user.uid,
         authorName: user.displayName || '친구',
         authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
       })
       setText('')
+      notifyMembers(msgText)
     } finally {
       setSending(false)
     }
@@ -137,6 +158,7 @@ export default function RoomPage() {
         authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
       })
+      notifyMembers('', data.secure_url)
     } finally {
       setSending(false)
     }
@@ -248,6 +270,11 @@ export default function RoomPage() {
               </div>
             </div>
             <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
+              {permission !== 'granted' && (
+                <button onClick={() => { requestPermission(); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
+                  <span>🔔</span><span>알림 켜기</span>
+                </button>
+              )}
               <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                 <span>🔗</span><span>친구 초대</span>
               </button>
