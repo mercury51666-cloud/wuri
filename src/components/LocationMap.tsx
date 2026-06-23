@@ -1,18 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { doc, onSnapshot, setDoc, deleteDoc, collection } from 'firebase/firestore'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import 'leaflet/dist/leaflet.css'
 
-// Leaflet 기본 마커 아이콘 수정
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
+
+function makeColorIcon(color: string) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:36px;height:36px;border-radius:50% 50% 50% 0;
+      background:${color};border:3px solid white;
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+      transform:rotate(-45deg);
+    "></div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -36],
+  })
+}
+
+const COLORS = ['#8b5cf6','#ec4899','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#84cc16']
+
+function timeAgo(ts: number) {
+  const diff = Math.floor((Date.now() - ts) / 1000)
+  if (diff < 60) return '방금 전'
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`
+  return `${Math.floor(diff / 3600)}시간 전`
+}
+
+function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap()
+  useEffect(() => { map.setView([lat, lng], map.getZoom()) }, [lat, lng])
+  return null
+}
 
 interface LocationData {
   userId: string
@@ -31,63 +60,101 @@ export default function LocationMap({ roomId }: Props) {
   const [sharing, setSharing] = useState(false)
   const [locations, setLocations] = useState<LocationData[]>([])
   const [loading, setLoading] = useState(false)
-  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [myCenter, setMyCenter] = useState<{ lat: number; lng: number } | null>(null)
+  const [, setTick] = useState(0)
+  const watchIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     const ref = collection(db, 'rooms', roomId, 'locations')
     return onSnapshot(ref, (snap) => {
       const now = Date.now()
-      const locs = snap.docs
-        .map((d) => d.data() as LocationData)
-        .filter((l) => now - l.updatedAt < 1000 * 60 * 30)
-      setLocations(locs)
-      if (user) {
-        const mine = locs.find((l) => l.userId === user.uid)
-        setSharing(!!mine)
-      }
+      setLocations(
+        snap.docs
+          .map((d) => d.data() as LocationData)
+          .filter((l) => now - l.updatedAt < 1000 * 60 * 60)
+      )
     })
-  }, [roomId, user])
+  }, [roomId])
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      const mine = locations.find((l) => l.userId === user.uid)
+      setSharing(!!mine)
+    }
+  }, [locations, user])
 
   const startSharing = () => {
     if (!user) return
     setLoading(true)
-    navigator.geolocation.getCurrentPosition(
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords
-        setMyLocation({ lat, lng })
+        setMyCenter({ lat, lng })
+        setLoading(false)
+        setSharing(true)
         await setDoc(doc(db, 'rooms', roomId, 'locations', user.uid), {
           userId: user.uid,
-          userName: user.displayName ?? user.email ?? '친구',
+          userName: user.displayName ?? user.email?.split('@')[0] ?? '친구',
           lat,
           lng,
           updatedAt: Date.now(),
         })
-        setLoading(false)
       },
       () => {
-        alert('위치 정보를 가져올 수 없어요. 브라우저 위치 권한을 허용해주세요.')
+        alert('위치 권한을 허용해주세요!')
         setLoading(false)
-      }
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
     )
   }
 
   const stopSharing = async () => {
-    if (!user) return
-    await deleteDoc(doc(db, 'rooms', roomId, 'locations', user.uid))
-    setMyLocation(null)
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
+    }
+    if (user) await deleteDoc(doc(db, 'rooms', roomId, 'locations', user.uid))
+    setSharing(false)
+    setMyCenter(null)
   }
 
-  const center = locations.length > 0
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+    }
+  }, [])
+
+  const myLoc = user ? locations.find((l) => l.userId === user.uid) : null
+  const center = myLoc
+    ? { lat: myLoc.lat, lng: myLoc.lng }
+    : locations[0]
     ? { lat: locations[0].lat, lng: locations[0].lng }
-    : myLocation ?? { lat: 37.5665, lng: 126.9780 }
+    : myCenter ?? { lat: 37.5665, lng: 126.9780 }
+
+  const colorMap: Record<string, string> = {}
+  locations.forEach((l, i) => { colorMap[l.userId] = COLORS[i % COLORS.length] })
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700">
       <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">
         <div>
-          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">📍 멤버 위치</p>
+          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm flex items-center gap-1.5">
+            📍 실시간 위치
+            {sharing && (
+              <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-normal">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                공유 중
+              </span>
+            )}
+          </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            {locations.length > 0 ? `${locations.length}명 공유 중` : '공유 중인 멤버 없음'}
+            {locations.length > 0 ? `${locations.length}명 위치 공유 중` : '공유 중인 멤버 없음'}
           </p>
         </div>
         <button
@@ -95,46 +162,54 @@ export default function LocationMap({ roomId }: Props) {
           disabled={loading}
           className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors ${
             sharing
-              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200'
+              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
               : 'bg-violet-500 hover:bg-violet-600 text-white'
           } disabled:opacity-50`}
         >
-          {loading ? '위치 확인 중...' : sharing ? '🔴 공유 끄기' : '🟢 내 위치 공유'}
+          {loading ? '...' : sharing ? '끄기' : '🟢 위치 공유'}
         </button>
       </div>
 
-      {locations.length > 0 ? (
-        <MapContainer
-          center={[center.lat, center.lng]}
-          zoom={13}
-          style={{ height: '300px', width: '100%' }}
-          key={locations.map((l) => l.userId).join(',')}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={14}
+        style={{ height: '320px', width: '100%' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {myLoc && <RecenterMap lat={myLoc.lat} lng={myLoc.lng} />}
+        {locations.map((loc) => (
+          <Marker
+            key={loc.userId}
+            position={[loc.lat, loc.lng]}
+            icon={makeColorIcon(colorMap[loc.userId] ?? COLORS[0])}
+          >
+            <Popup>
+              <div className="text-center min-w-[80px]">
+                <p className="font-bold text-sm">{loc.userName}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{timeAgo(loc.updatedAt)}</p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      {locations.length > 0 && (
+        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 flex gap-2 flex-wrap">
           {locations.map((loc) => (
-            <Marker key={loc.userId} position={[loc.lat, loc.lng]}>
-              <Popup>
-                <div className="text-sm font-bold">{loc.userName}</div>
-                <div className="text-xs text-gray-500">
-                  {new Date(loc.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 업데이트
-                </div>
-              </Popup>
-            </Marker>
+            <div key={loc.userId} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: colorMap[loc.userId] }}
+              />
+              <span className="font-medium">{loc.userName}</span>
+              <span className="text-gray-400">{timeAgo(loc.updatedAt)}</span>
+            </div>
           ))}
-        </MapContainer>
-      ) : (
-        <div className="h-40 flex flex-col items-center justify-center text-gray-400 gap-2">
-          <span className="text-3xl">🗺️</span>
-          <p className="text-sm">위치를 공유하면 여기에 지도가 나타나요</p>
         </div>
       )}
-
-      <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700">
-        <p className="text-xs text-gray-400">위치는 30분 후 자동으로 사라져요</p>
-      </div>
     </div>
   )
 }
