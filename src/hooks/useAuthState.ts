@@ -7,12 +7,18 @@ export function useAuthState() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getRedirectResult(auth).catch(() => {})
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser)
-      setLoading(false)
-    })
-    return () => unsubscribe()
+    let unsubscribe: () => void
+
+    getRedirectResult(auth)
+      .catch(() => {})
+      .finally(() => {
+        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          setUser(currentUser)
+          setLoading(false)
+        })
+      })
+
+    return () => { if (unsubscribe) unsubscribe() }
   }, [])
 
   return { user, loading }
