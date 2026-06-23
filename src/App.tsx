@@ -1,9 +1,19 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import type { User } from 'firebase/auth'
 import { useAuthState } from './hooks/useAuthState'
 import { ThemeProvider } from './contexts/ThemeContext'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import RoomPage from './pages/RoomPage'
+
+function RequireAuth({ user, children }: { user: User | null; children: ReactNode }) {
+  const location = useLocation()
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />
+  }
+  return <>{children}</>
+}
 
 function App() {
   const { user, loading } = useAuthState()
@@ -29,11 +39,11 @@ function App() {
         />
         <Route
           path="/"
-          element={user ? <HomePage /> : <Navigate to="/login" replace />}
+          element={<RequireAuth user={user}><HomePage /></RequireAuth>}
         />
         <Route
           path="/room/:roomId"
-          element={user ? <RoomPage /> : <Navigate to="/login" replace />}
+          element={<RequireAuth user={user}><RoomPage /></RequireAuth>}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
