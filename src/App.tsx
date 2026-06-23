@@ -25,15 +25,15 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={user ? <Navigate to="/" replace /> : <LoginPage />}
+          element={user?.emailVerified ? <Navigate to="/" replace /> : <LoginPage />}
         />
         <Route
           path="/"
-          element={user ? <HomePage /> : <Navigate to="/login" replace />}
+          element={user?.emailVerified ? <HomePage /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/room/:roomId"
-          element={user ? <RoomPage /> : <Navigate to="/login" replace />}
+          element={user?.emailVerified ? <RoomPage /> : <Navigate to="/login" replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

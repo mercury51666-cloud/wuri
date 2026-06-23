@@ -33,8 +33,8 @@ export default function LoginPage() {
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         await updateProfile(user, { displayName: name.trim() })
         await sendEmailVerification(user)
-        await signOut(auth)
         setVerifyPending(true)
+        await signOut(auth)
       } else {
         const { user } = await signInWithEmailAndPassword(auth, email, password)
         if (!user.emailVerified) {
