@@ -22,7 +22,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
+    <div className="page-enter min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
       <div className="absolute w-72 h-72 rounded-full bg-violet-400 opacity-10 dark:opacity-20 blur-3xl top-1/4 left-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="relative w-full max-w-sm flex flex-col items-center gap-10">

@@ -12,6 +12,7 @@ import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
+import { useUserProfiles } from '../hooks/useUserProfiles'
 
 interface Message {
   id: string
@@ -54,6 +55,7 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
   useMessageNotifications(messages, user?.uid, room?.name ?? '우리방')
 
@@ -117,20 +119,42 @@ export default function RoomPage() {
     return new Date(ts.seconds * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }
 
+  const formatDateLabel = (ts: { seconds: number } | null) => {
+    if (!ts) return ''
+    const d = new Date(ts.seconds * 1000)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) return '오늘'
+    if (d.toDateString() === yesterday.toDateString()) return '어제'
+    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
+
   if (!room) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-violet-400 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto animate-pulse">
+      <div className="h-14 bg-white dark:bg-white/5 border-b border-gray-100 dark:border-white/10 flex items-center px-4 gap-3">
+        <div className="w-8 h-8 bg-gray-200 dark:bg-white/10 rounded-lg" />
+        <div className="flex-1 h-4 bg-gray-200 dark:bg-white/10 rounded-lg w-1/3" />
+      </div>
+      <div className="flex-1 px-4 py-6 space-y-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`flex gap-2 ${i % 2 === 0 ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className="w-8 h-8 bg-gray-200 dark:bg-white/10 rounded-full shrink-0" />
+            <div className={`h-10 bg-gray-200 dark:bg-white/10 rounded-2xl ${i % 2 === 0 ? 'w-2/5' : 'w-3/5'}`} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
+    <div className="page-enter min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
       {/* 햄버거 사이드 메뉴 */}
       {showMenu && (
         <div className="fixed inset-0 z-40 flex">
-          <div className="w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col py-6 px-4 gap-2 shadow-2xl">
+          <div className="menu-enter w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col py-6 px-4 gap-2 shadow-2xl">
             <div className="flex items-center gap-3 mb-4 px-2">
               <div className="w-10 h-10 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl">
                 {room.emoji}
@@ -153,6 +177,31 @@ export default function RoomPage() {
                 <span>{tab.label}</span>
               </button>
             ))}
+
+            {/* 멤버 목록 */}
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-600 px-2 mb-2 tracking-widest uppercase">멤버</p>
+              <div className="space-y-1">
+                {room.memberIds.map((uid) => {
+                  const profile = memberProfiles[uid]
+                  const isMe = uid === user?.uid
+                  return (
+                    <div key={uid} className="flex items-center gap-3 px-2 py-2 rounded-xl">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0">
+                        {profile?.photoURL
+                          ? <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
+                          : (profile?.displayName ?? '?')[0]
+                        }
+                      </div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                        {profile?.displayName ?? '불러오는 중...'}
+                        {isMe && <span className="text-xs text-violet-400 ml-1">(나)</span>}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
             <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
               <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                 <span>🔗</span><span>친구 초대</span>
@@ -201,32 +250,48 @@ export default function RoomPage() {
           <>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {messages.length === 0 && (
-                <div className="text-center py-12 text-gray-300 dark:text-gray-600">
-                  <div className="text-4xl mb-2">💬</div>
-                  <p className="text-sm">첫 메시지를 보내보세요!</p>
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-500/10 flex items-center justify-center text-3xl">💬</div>
+                  <p className="font-semibold text-gray-500 dark:text-gray-400">아직 대화가 없어요</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-600 text-center">첫 메시지로 대화를 시작해보세요!</p>
                 </div>
               )}
-              {messages.map((msg) => {
+              {messages.map((msg, idx) => {
                 const isMine = msg.authorId === user?.uid
+                const prevMsg = idx > 0 ? messages[idx - 1] : null
+                const showDateLabel = !prevMsg || (
+                  msg.createdAt && prevMsg.createdAt &&
+                  new Date(msg.createdAt.seconds * 1000).toDateString() !==
+                  new Date(prevMsg.createdAt.seconds * 1000).toDateString()
+                )
                 return (
-                  <div key={msg.id} className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                    {!isMine && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1">
-                        {msg.authorPhotoURL ? <img src={msg.authorPhotoURL} alt={msg.authorName} className="w-full h-full object-cover" /> : msg.authorName[0]}
+                  <div key={msg.id}>
+                    {showDateLabel && msg.createdAt && (
+                      <div className="flex items-center gap-3 my-4">
+                        <div className="flex-1 h-px bg-gray-100 dark:bg-white/10" />
+                        <span className="text-xs text-gray-400 dark:text-gray-600 font-medium px-2">{formatDateLabel(msg.createdAt)}</span>
+                        <div className="flex-1 h-px bg-gray-100 dark:bg-white/10" />
                       </div>
                     )}
-                    {isMine && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1">
-                        {user?.photoURL ? <img src={user.photoURL} alt="나" className="w-full h-full object-cover" /> : (user?.displayName ?? '?')[0]}
+                    <div className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                      {!isMine && (
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1">
+                          {msg.authorPhotoURL ? <img src={msg.authorPhotoURL} alt={msg.authorName} className="w-full h-full object-cover" /> : msg.authorName[0]}
+                        </div>
+                      )}
+                      {isMine && (
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1">
+                          {user?.photoURL ? <img src={user.photoURL} alt="나" className="w-full h-full object-cover" /> : (user?.displayName ?? '?')[0]}
+                        </div>
+                      )}
+                      <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
+                        {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                          isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm'
+                                 : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'
+                        }`}>{msg.text}</div>
+                        <span className="text-xs text-gray-300 dark:text-gray-600 px-1">{formatTime(msg.createdAt)}</span>
                       </div>
-                    )}
-                    <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
-                      {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
-                      <div className={`px-4 py-2.5 rounded-2xl text-sm ${
-                        isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm'
-                               : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'
-                      }`}>{msg.text}</div>
-                      <span className="text-xs text-gray-300 dark:text-gray-600 px-1">{formatTime(msg.createdAt)}</span>
                     </div>
                   </div>
                 )
@@ -239,7 +304,7 @@ export default function RoomPage() {
                   className="flex-1 bg-gray-100 dark:bg-white/10 border border-transparent dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
                 />
                 <button type="submit" disabled={sending || !text.trim()}
-                  className="w-10 h-10 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-colors"
+                  className="w-10 h-10 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
                 >→</button>
               </form>
             </div>

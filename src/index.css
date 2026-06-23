@@ -1,2 +1,19 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.page-enter { animation: fadeUp 0.22s ease-out both; }
+.page-fade  { animation: fadeIn 0.18s ease-out both; }
+.menu-enter { animation: slideInLeft 0.2s ease-out both; }

@@ -4,6 +4,8 @@ import {
   collection,
   query,
   where,
+  orderBy,
+  limit,
   onSnapshot,
   addDoc,
   serverTimestamp,
@@ -13,6 +15,7 @@ import { auth, db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import ProfileModal from '../components/ProfileModal'
+import OnboardingModal from '../components/OnboardingModal'
 
 interface Room {
   id: string
@@ -27,11 +30,17 @@ export default function HomePage() {
   const { dark, toggleDark } = useTheme()
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
+  const [loadingRooms, setLoadingRooms] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [roomEmoji, setRoomEmoji] = useState('🏠')
   const [creating, setCreating] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem('wuri_onboarded')
+  })
+  const [lastSeenAt, setLastSeenAt] = useState<Record<string, number>>({})
+  const [latestMsgAt, setLatestMsgAt] = useState<Record<string, number>>({})
 
   const emojis = ['🏠', '🌙', '🌈', '🎮', '🎵', '📚', '🍕', '🐾', '🌸', '⭐']
 
@@ -47,9 +56,53 @@ export default function HomePage() {
         ...doc.data(),
       })) as Room[]
       setRooms(data)
+      setLoadingRooms(false)
     })
     return () => unsubscribe()
   }, [user])
+
+  // 각 방의 최신 메시지 시간 구독
+  useEffect(() => {
+    if (rooms.length === 0) return
+    const unsubs = rooms.map((room) => {
+      const q = query(
+        collection(db, 'rooms', room.id, 'messages'),
+        orderBy('createdAt', 'desc'),
+        limit(1)
+      )
+      return onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          const ts = snap.docs[0].data().createdAt as { seconds: number } | null
+          if (ts) {
+            setLatestMsgAt((prev) => ({ ...prev, [room.id]: ts.seconds * 1000 }))
+          }
+        }
+      })
+    })
+    return () => unsubs.forEach((u) => u())
+  }, [rooms])
+
+  // 방 입장 시 lastSeenAt 갱신
+  const handleEnterRoom = (roomId: string) => {
+    const now = Date.now()
+    setLastSeenAt((prev) => ({ ...prev, [roomId]: now }))
+    const stored = JSON.parse(localStorage.getItem('wuri_seen') ?? '{}')
+    stored[roomId] = now
+    localStorage.setItem('wuri_seen', JSON.stringify(stored))
+    navigate(`/room/${roomId}`)
+  }
+
+  // 초기화 시 localStorage에서 lastSeenAt 불러오기
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem('wuri_seen') ?? '{}')
+    setLastSeenAt(stored)
+  }, [])
+
+  const hasUnread = (roomId: string) => {
+    const latest = latestMsgAt[roomId]
+    const seen = lastSeenAt[roomId] ?? 0
+    return latest && latest > seen
+  }
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,8 +126,14 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
+    <div className="page-enter min-h-screen bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      {showOnboarding && (
+        <OnboardingModal onDone={() => {
+          localStorage.setItem('wuri_onboarded', '1')
+          setShowOnboarding(false)
+        }} />
+      )}
       <div className="absolute w-72 h-72 rounded-full bg-violet-400 opacity-10 dark:opacity-10 blur-3xl top-0 left-1/2 -translate-x-1/2 pointer-events-none" />
 
       {/* 헤더 */}
@@ -107,16 +166,37 @@ export default function HomePage() {
 
         <button
           onClick={() => setShowCreate(true)}
-          className="w-full bg-violet-500 hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md shadow-violet-200 dark:shadow-none"
+          className="w-full bg-violet-500 hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-500 active:scale-[0.98] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-violet-200 dark:shadow-none"
         >
           <span className="text-xl">+</span>
           <span>새 방 만들기</span>
         </button>
 
-        {rooms.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="font-medium text-gray-400">아직 방이 없어요</p>
-            <p className="text-sm mt-1 text-gray-400 dark:text-gray-600">새 방을 만들거나 초대 링크로 참여해보세요</p>
+        {loadingRooms ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-pulse">
+                <div className="w-12 h-12 bg-gray-200 dark:bg-white/10 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-200 dark:bg-white/10 rounded-lg w-1/2" />
+                  <div className="h-3 bg-gray-100 dark:bg-white/5 rounded-lg w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : rooms.length === 0 ? (
+          <div className="text-center py-20 flex flex-col items-center gap-3">
+            <div className="w-20 h-20 rounded-3xl bg-violet-100 dark:bg-violet-500/10 flex items-center justify-center text-4xl mb-1">🏡</div>
+            <p className="font-bold text-gray-600 dark:text-gray-300 text-lg">아직 방이 없어요</p>
+            <p className="text-sm text-gray-400 dark:text-gray-600 leading-relaxed">
+              새 방을 만들거나<br/>초대 링크로 친구 방에 참여해보세요
+            </p>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="mt-2 text-violet-500 dark:text-violet-400 text-sm font-semibold underline underline-offset-2 active:opacity-60 transition-opacity"
+            >
+              방 만들기 →
+            </button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -124,17 +204,25 @@ export default function HomePage() {
             {rooms.map((room) => (
               <button
                 key={room.id}
-                onClick={() => navigate(`/room/${room.id}`)}
-                className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 hover:shadow-md dark:hover:bg-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all text-left shadow-sm"
+                onClick={() => handleEnterRoom(room.id)}
+                className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 hover:shadow-md dark:hover:bg-white/10 active:scale-[0.98] rounded-2xl p-4 flex items-center gap-4 transition-all text-left shadow-sm"
               >
-                <div className="w-12 h-12 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl border border-violet-200 dark:border-violet-500/20">
-                  {room.emoji}
+                <div className="relative w-12 h-12 shrink-0">
+                  <div className="w-12 h-12 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl border border-violet-200 dark:border-violet-500/20">
+                    {room.emoji}
+                  </div>
+                  {hasUnread(room.id) && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white dark:border-[#0d0d0d]" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-800 dark:text-white truncate">{room.name}</p>
+                  <p className={`font-bold truncate ${hasUnread(room.id) ? 'text-gray-900 dark:text-white' : 'text-gray-800 dark:text-white'}`}>{room.name}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">멤버 {room.memberIds?.length ?? 1}명</p>
                 </div>
-                <span className="text-gray-300 dark:text-gray-600 text-lg">›</span>
+                {hasUnread(room.id) && (
+                  <span className="w-2 h-2 bg-rose-500 rounded-full" />
+                )}
+                {!hasUnread(room.id) && <span className="text-gray-300 dark:text-gray-600 text-lg">›</span>}
               </button>
             ))}
           </div>
