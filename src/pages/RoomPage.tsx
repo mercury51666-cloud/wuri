@@ -154,7 +154,7 @@ export default function RoomPage() {
       {/* 햄버거 사이드 메뉴 */}
       {showMenu && (
         <div className="fixed inset-0 z-[2000] flex">
-          <div className="menu-enter w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col py-6 px-4 gap-2 shadow-2xl">
+          <div className="menu-enter w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col gap-2 shadow-2xl" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)', paddingBottom: '1.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
             <div className="flex items-center gap-3 mb-4 px-2">
               <div className="w-10 h-10 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl">
                 {room.emoji}
