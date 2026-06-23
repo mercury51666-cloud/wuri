@@ -17,7 +17,7 @@ interface Room {
   id: string
   name: string
   emoji: string
-  memberCount: number
+  memberIds: string[]
   createdAt: unknown
 }
 
@@ -120,7 +120,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-gray-800 truncate">{room.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">멤버 {room.memberCount}명</p>
+                  <p className="text-xs text-gray-400 mt-0.5">멤버 {room.memberIds?.length ?? 1}명</p>
                 </div>
                 <span className="text-gray-300 text-lg">›</span>
               </button>
