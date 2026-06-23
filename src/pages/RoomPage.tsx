@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  doc, getDoc, collection, query, orderBy,
+  doc, collection, query, orderBy,
   onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -62,7 +62,7 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!roomId) return
-    getDoc(doc(db, 'rooms', roomId)).then((snap) => {
+    return onSnapshot(doc(db, 'rooms', roomId), (snap) => {
       if (!snap.exists()) { navigate('/'); return }
       setRoom(snap.data() as Room)
     })
