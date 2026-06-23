@@ -153,7 +153,7 @@ export default function RoomPage() {
     <div className="page-enter min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
       {/* 햄버거 사이드 메뉴 */}
       {showMenu && (
-        <div className="fixed inset-0 z-40 flex">
+        <div className="fixed inset-0 z-[2000] flex">
           <div className="menu-enter w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col py-6 px-4 gap-2 shadow-2xl">
             <div className="flex items-center gap-3 mb-4 px-2">
               <div className="w-10 h-10 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl">

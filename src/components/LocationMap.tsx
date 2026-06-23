@@ -148,7 +148,7 @@ export default function LocationMap({ roomId }: Props) {
   locations.forEach((l, i) => { colorMap[l.userId] = COLORS[i % COLORS.length] })
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700" style={{ isolation: 'isolate' }}>
       <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">
         <div>
           <p className="font-bold text-gray-800 dark:text-gray-100 text-sm flex items-center gap-1.5">
