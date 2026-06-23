@@ -123,39 +123,37 @@ export default function RoomPage() {
   }
 
   if (!room) return (
-    <div className="min-h-screen bg-violet-50 dark:bg-gray-900 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-violet-400 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
       {/* 헤더 */}
-      <header className="bg-white dark:bg-gray-800 sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700 shadow-sm">
+      <header className="bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-10 border-b border-white/10">
         <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-xl">‹</button>
-          <div className="w-9 h-9 bg-violet-100 dark:bg-violet-900 rounded-xl flex items-center justify-center text-xl">
+          <button onClick={() => navigate('/')} className="text-gray-500 hover:text-white text-xl transition-colors">‹</button>
+          <div className="w-9 h-9 bg-violet-500/20 border border-violet-500/30 rounded-xl flex items-center justify-center text-xl">
             {room.emoji}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-800 dark:text-gray-100 truncate">{room.name}</p>
-            <p className="text-xs text-gray-400">멤버 {room.memberIds.length}명</p>
+            <p className="font-bold text-white truncate">{room.name}</p>
+            <p className="text-xs text-gray-500">멤버 {room.memberIds.length}명</p>
           </div>
-          <button onClick={toggleDark} className="text-lg px-1" title="다크모드">
-            {dark ? '☀️' : '🌙'}
-          </button>
+          <button onClick={toggleDark} className="text-lg px-1">{dark ? '☀️' : '🌙'}</button>
           <button
             onClick={() => setShowInvite(true)}
-            className="text-xs bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 font-medium px-3 py-1.5 rounded-lg hover:bg-violet-200"
+            className="text-xs bg-violet-500/20 text-violet-400 border border-violet-500/30 font-medium px-3 py-1.5 rounded-lg hover:bg-violet-500/30 transition-colors"
           >
             초대
           </button>
           {isJoined && (
             <button
               onClick={() => setShowLeave(true)}
-              className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30"
+              className="text-xs text-red-400 hover:text-red-300 px-2 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
             >
               나가기
             </button>
@@ -163,15 +161,15 @@ export default function RoomPage() {
         </div>
 
         {/* 탭 */}
-        <div className="flex border-t border-gray-100 dark:border-gray-700">
+        <div className="flex border-t border-white/10">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1 transition-colors ${
                 activeTab === tab.id
-                  ? 'text-violet-600 dark:text-violet-400 border-b-2 border-violet-500'
-                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                  ? 'text-violet-400 border-b-2 border-violet-500'
+                  : 'text-gray-600 hover:text-gray-400'
               }`}
             >
               <span>{tab.emoji}</span>
@@ -183,9 +181,9 @@ export default function RoomPage() {
 
       {/* 멤버 아닐 때 */}
       {!isJoined && (
-        <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-amber-700 dark:text-amber-300">아직 이 방의 멤버가 아니에요</p>
-          <button onClick={joinRoom} className="text-sm bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-amber-600">
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-amber-400">아직 이 방의 멤버가 아니에요</p>
+          <button onClick={joinRoom} className="text-sm bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-amber-400 transition-colors">
             참여하기
           </button>
         </div>
@@ -199,7 +197,7 @@ export default function RoomPage() {
           <>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {messages.length === 0 && (
-                <div className="text-center py-12 text-gray-300">
+                <div className="text-center py-12 text-gray-600">
                   <div className="text-4xl mb-2">💬</div>
                   <p className="text-sm">첫 메시지를 보내보세요!</p>
                 </div>
@@ -209,7 +207,7 @@ export default function RoomPage() {
                 return (
                   <div key={msg.id} className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                     {!isMine && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-200 dark:bg-violet-800 flex items-center justify-center text-sm font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-1">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-300 shrink-0 mt-1">
                         {msg.authorPhotoURL
                           ? <img src={msg.authorPhotoURL} alt={msg.authorName} className="w-full h-full object-cover" />
                           : msg.authorName[0]
@@ -217,7 +215,7 @@ export default function RoomPage() {
                       </div>
                     )}
                     {isMine && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-200 dark:bg-violet-800 flex items-center justify-center text-sm font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-1">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-300 shrink-0 mt-1">
                         {user?.photoURL
                           ? <img src={user.photoURL} alt="나" className="w-full h-full object-cover" />
                           : (user?.displayName ?? '?')[0]
@@ -225,34 +223,34 @@ export default function RoomPage() {
                       </div>
                     )}
                     <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
-                      {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
+                      {!isMine && <span className="text-xs text-gray-600 ml-1">{msg.authorName}</span>}
                       <div className={`px-4 py-2.5 rounded-2xl text-sm ${
                         isMine
-                          ? 'bg-violet-500 text-white rounded-tr-sm'
-                          : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow-sm rounded-tl-sm'
+                          ? 'bg-violet-600 text-white rounded-tr-sm'
+                          : 'bg-white/10 border border-white/10 text-gray-200 rounded-tl-sm'
                       }`}>
                         {msg.text}
                       </div>
-                      <span className="text-xs text-gray-300 px-1">{formatTime(msg.createdAt)}</span>
+                      <span className="text-xs text-gray-600 px-1">{formatTime(msg.createdAt)}</span>
                     </div>
                   </div>
                 )
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 px-4 py-3">
+            <div className="border-t border-white/10 bg-[#0d0d0d]/80 backdrop-blur-md px-4 py-3">
               <form onSubmit={sendMessage} className="flex items-center gap-2">
                 <input
                   type="text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="메시지 보내기..."
-                  className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="flex-1 bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
                 <button
                   type="submit"
                   disabled={sending || !text.trim()}
-                  className="w-10 h-10 rounded-xl bg-violet-500 hover:bg-violet-600 disabled:bg-violet-300 flex items-center justify-center text-white shrink-0"
+                  className="w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-colors"
                 >→</button>
               </form>
             </div>
@@ -269,17 +267,17 @@ export default function RoomPage() {
         {/* ── 게임 ── */}
         {activeTab === 'game' && roomId && (
           <div className="flex-1 overflow-y-auto">
-            <div className="flex bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex bg-[#0d0d0d] border-b border-white/10">
               <button
                 onClick={() => setGameTab('penalty')}
-                className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1 ${
-                  gameTab === 'penalty' ? 'text-green-600 border-b-2 border-green-500' : 'text-gray-400'
+                className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1 transition-colors ${
+                  gameTab === 'penalty' ? 'text-green-400 border-b-2 border-green-500' : 'text-gray-600'
                 }`}
               >⚽ 페널티킥</button>
               <button
                 onClick={() => setGameTab('balance')}
-                className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1 ${
-                  gameTab === 'balance' ? 'text-orange-600 border-b-2 border-orange-500' : 'text-gray-400'
+                className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1 transition-colors ${
+                  gameTab === 'balance' ? 'text-orange-400 border-b-2 border-orange-500' : 'text-gray-600'
                 }`}
               >⚖️ 밸런스게임</button>
             </div>
@@ -291,8 +289,7 @@ export default function RoomPage() {
         {/* ── 우리방 ── */}
         {activeTab === 'home' && roomId && (
           <div className="flex-1 overflow-y-auto">
-            {/* 서브탭 */}
-            <div className="flex bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex bg-[#0d0d0d] border-b border-white/10">
               {([
                 { id: 'mascot' as HomeTab, label: '🐾 마스코트' },
                 { id: 'mission' as HomeTab, label: '🎯 미션' },
@@ -304,13 +301,12 @@ export default function RoomPage() {
                   onClick={() => setHomeTab(t.id)}
                   className={`flex-1 py-3 text-xs font-semibold transition-colors ${
                     homeTab === t.id
-                      ? 'text-violet-600 dark:text-violet-400 border-b-2 border-violet-500'
-                      : 'text-gray-400 hover:text-gray-600'
+                      ? 'text-violet-400 border-b-2 border-violet-500'
+                      : 'text-gray-600 hover:text-gray-400'
                   }`}
                 >{t.label}</button>
               ))}
             </div>
-
             <div className="p-4">
               {homeTab === 'mascot' && <Mascot roomId={roomId} totalMessages={messages.length} />}
               {homeTab === 'mission' && <DailyMission roomId={roomId} />}
@@ -323,26 +319,14 @@ export default function RoomPage() {
 
       {/* 방 나가기 모달 */}
       {showLeave && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-sm p-6 text-center">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-3xl w-full max-w-sm p-6 text-center">
             <div className="text-4xl mb-3">🚪</div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">방을 나갈까요?</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              나가면 채팅 목록에서 사라져요.<br />초대 링크로 다시 들어올 수 있어요.
-            </p>
+            <h3 className="text-lg font-bold text-white mb-2">방을 나갈까요?</h3>
+            <p className="text-sm text-gray-500 mb-6">나가면 채팅 목록에서 사라져요.<br />초대 링크로 다시 들어올 수 있어요.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowLeave(false)}
-                className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-medium"
-              >
-                취소
-              </button>
-              <button
-                onClick={leaveRoom}
-                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold"
-              >
-                나가기
-              </button>
+              <button onClick={() => setShowLeave(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-gray-400 font-medium hover:bg-white/10 transition-colors">취소</button>
+              <button onClick={leaveRoom} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors">나가기</button>
             </div>
           </div>
         </div>
@@ -350,23 +334,17 @@ export default function RoomPage() {
 
       {/* 초대 모달 */}
       {showInvite && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-sm p-6 text-center">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-3xl w-full max-w-sm p-6 text-center">
             <div className="text-4xl mb-3">🔗</div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">친구 초대하기</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-              아래 링크를 친구에게 공유하면<br />이 방에 참여할 수 있어요
-            </p>
-            <div className="bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-3 text-xs text-gray-600 dark:text-gray-300 break-all mb-4">
+            <h3 className="text-lg font-bold text-white mb-2">친구 초대하기</h3>
+            <p className="text-sm text-gray-500 mb-5">아래 링크를 친구에게 공유하면<br />이 방에 참여할 수 있어요</p>
+            <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-gray-400 break-all mb-4">
               {window.location.href}
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowInvite(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-medium">
-                닫기
-              </button>
-              <button onClick={copyInviteLink} className="flex-1 py-3 rounded-xl bg-violet-500 hover:bg-violet-600 text-white font-bold">
-                {copied ? '복사됨 ✓' : '링크 복사'}
-              </button>
+              <button onClick={() => setShowInvite(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-gray-400 font-medium hover:bg-white/10 transition-colors">닫기</button>
+              <button onClick={copyInviteLink} className="flex-1 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors">{copied ? '복사됨 ✓' : '링크 복사'}</button>
             </div>
           </div>
         </div>
