@@ -22,25 +22,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0d0d0d]">
-      {/* 배경 글로우 */}
-      <div className="absolute w-72 h-72 rounded-full bg-violet-600 opacity-20 blur-3xl top-1/4 left-1/2 -translate-x-1/2 pointer-events-none" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
+      <div className="absolute w-72 h-72 rounded-full bg-violet-400 opacity-10 dark:opacity-20 blur-3xl top-1/4 left-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="relative w-full max-w-sm flex flex-col items-center gap-10">
         {/* 로고 */}
         <div className="text-center">
-          <h1 className="text-7xl font-black tracking-tighter text-white" style={{ letterSpacing: '-0.04em' }}>
+          <h1 className="text-7xl font-black tracking-tighter text-violet-700 dark:text-white" style={{ letterSpacing: '-0.04em' }}>
             WU<span className="text-violet-400">RI</span>
           </h1>
-          <p className="text-gray-500 mt-3 text-sm tracking-widest uppercase">친구들과 함께하는 공간</p>
+          <p className="text-gray-400 mt-3 text-sm tracking-widest uppercase">친구들과 함께하는 공간</p>
         </div>
 
         {/* 카드 */}
-        <div className="w-full bg-white/5 border border-white/10 backdrop-blur-md rounded-3xl p-8">
+        <div className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 shadow-xl dark:shadow-none backdrop-blur-md rounded-3xl p-8">
+          <p className="text-center text-sm text-gray-400 mb-6">구글 계정으로 간편하게 로그인해요</p>
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-bold py-4 rounded-2xl transition-all shadow-lg disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 dark:bg-white dark:hover:bg-gray-100 text-gray-800 font-bold py-4 rounded-2xl transition-all shadow-sm disabled:opacity-50 border border-gray-200 dark:border-transparent"
           >
             <svg width="20" height="20" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -50,10 +50,7 @@ export default function LoginPage() {
             </svg>
             {loading ? '로그인 중...' : 'Google로 시작하기'}
           </button>
-
-          {error && (
-            <p className="mt-4 text-red-400 text-sm text-center">{error}</p>
-          )}
+          {error && <p className="mt-4 text-red-500 dark:text-red-400 text-sm text-center">{error}</p>}
         </div>
       </div>
     </div>
