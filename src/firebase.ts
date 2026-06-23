@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { initializeAuth, browserLocalPersistence } from 'firebase/auth'
+import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -14,9 +14,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-// iOS Safari IndexedDB 차단 문제 방지: 시작부터 localStorage 사용
-export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-})
+export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
