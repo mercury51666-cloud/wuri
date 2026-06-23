@@ -5,12 +5,29 @@ import {
   orderBy,
   onSnapshot,
   addDoc,
+  getDocs,
+  deleteDoc,
   serverTimestamp,
   where,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
+
+async function cleanupOldPhotos(roomId: string) {
+  try {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const q = query(
+      collection(db, 'rooms', roomId, 'photos'),
+      where('createdAt', '<', Timestamp.fromDate(todayStart))
+    )
+    const snap = await getDocs(q)
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  } catch {
+    // 무시
+  }
+}
 
 interface Photo {
   id: string
@@ -66,11 +83,12 @@ export default function PhotoFeed({ roomId }: Props) {
   )
 
   useEffect(() => {
+    cleanupOldPhotos(roomId)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
     const q = query(
       collection(db, 'rooms', roomId, 'photos'),
-      where('createdAt', '>=', Timestamp.fromDate(
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      )),
+      where('createdAt', '>=', Timestamp.fromDate(todayStart)),
       orderBy('createdAt', 'desc')
     )
     return onSnapshot(q, (snap) => {
