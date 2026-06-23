@@ -30,6 +30,13 @@ export default function ProfileModal({ onClose }: Props) {
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState<string | null>(user?.photoURL ?? null)
   const [newPhotoUrl, setNewPhotoUrl] = useState<string | null>(null)
+  const [resetPhoto, setResetPhoto] = useState(false)
+
+  const handleResetPhoto = () => {
+    setPreview(null)
+    setNewPhotoUrl(null)
+    setResetPhoto(true)
+  }
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handlePhoto = async (file: File) => {
@@ -49,7 +56,7 @@ export default function ProfileModal({ onClose }: Props) {
     if (!user) return
     setSaving(true)
     try {
-      const photoURL = newPhotoUrl ?? (user.photoURL ?? '')
+      const photoURL = resetPhoto ? '' : (newPhotoUrl ?? (user.photoURL ?? ''))
       const displayName = name.trim() || (user.email?.split('@')[0] ?? '친구')
       await updateProfile(auth.currentUser!, { displayName, photoURL })
       await setDoc(doc(db, 'users', user.uid), { displayName, photoURL }, { merge: true })
@@ -88,7 +95,17 @@ export default function ProfileModal({ onClose }: Props) {
               {uploading ? '⏳' : '📷'}
             </button>
           </div>
-          <p className="text-xs text-gray-400">{uploading ? '업로드 중...' : '사진을 눌러 변경'}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-gray-400">{uploading ? '업로드 중...' : '사진을 눌러 변경'}</p>
+            {(preview || user?.photoURL) && !resetPhoto && (
+              <button
+                onClick={handleResetPhoto}
+                className="text-xs text-red-400 hover:text-red-600 underline"
+              >
+                기본값으로
+              </button>
+            )}
+          </div>
           <input
             ref={fileRef}
             type="file"
