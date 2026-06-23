@@ -64,7 +64,7 @@ export default function RoomPage() {
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
-  const { permission, requestPermission } = useFCMToken(user?.uid)
+  const { permission } = useFCMToken(user?.uid)
 
   const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
 
@@ -271,8 +271,8 @@ export default function RoomPage() {
             </div>
             <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
               {permission !== 'granted' && (
-                <button onClick={() => { requestPermission(); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
-                  <span>🔔</span><span>알림 켜기</span>
+                <button onClick={() => { navigate('/'); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
+                  <span>🔔</span><span>알림 설정</span>
                 </button>
               )}
               <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
