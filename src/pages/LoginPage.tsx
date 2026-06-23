@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from '../firebase'
 
 export default function LoginPage() {
@@ -9,7 +9,13 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setError('')
     setLoading(true)
-    await signInWithRedirect(auth, new GoogleAuthProvider())
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider())
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code
+      if (code !== 'auth/popup-closed-by-user') setError('로그인에 실패했어요. 다시 시도해주세요.')
+      setLoading(false)
+    }
   }
 
   return (

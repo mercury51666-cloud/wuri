@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { onAuthStateChanged, getRedirectResult, type User } from 'firebase/auth'
+import { onAuthStateChanged, type User } from 'firebase/auth'
 import { auth } from '../firebase'
 
 export function useAuthState() {
@@ -7,18 +7,11 @@ export function useAuthState() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let unsubscribe: () => void
-
-    getRedirectResult(auth)
-      .catch(() => {})
-      .finally(() => {
-        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          setUser(currentUser)
-          setLoading(false)
-        })
-      })
-
-    return () => { if (unsubscribe) unsubscribe() }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+      setLoading(false)
+    })
+    return () => unsubscribe()
   }, [])
 
   return { user, loading }
