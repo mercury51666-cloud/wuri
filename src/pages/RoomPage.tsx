@@ -179,7 +179,7 @@ export default function RoomPage() {
   }
 
   if (!room) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto animate-pulse">
+    <div className="h-[100dvh] bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto animate-pulse overflow-hidden">
       <div className="h-14 bg-white dark:bg-white/5 border-b border-gray-100 dark:border-white/10 flex items-center px-4 gap-3">
         <div className="w-8 h-8 bg-gray-200 dark:bg-white/10 rounded-lg" />
         <div className="flex-1 h-4 bg-gray-200 dark:bg-white/10 rounded-lg w-1/3" />
@@ -198,7 +198,7 @@ export default function RoomPage() {
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div className="page-enter min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
+    <div className="page-enter h-[100dvh] bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto overflow-hidden">
       {/* 프로필 보기 모달 */}
       {viewingProfile && (
         <div
