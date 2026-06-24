@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, query, orderBy, getDocs } from 'firebase/firestore'
+import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 
 interface Props {
@@ -15,9 +15,23 @@ export default function RoomStats({ roomId }: Props) {
   const [stats, setStats] = useState<MemberStat[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [dDay, setDDay] = useState<number | null>(null)
+  const [roomCreatedAt, setRoomCreatedAt] = useState<Date | null>(null)
 
   useEffect(() => {
     const fetchStats = async () => {
+      // 방 생성일 가져오기
+      const roomSnap = await getDoc(doc(db, 'rooms', roomId))
+      if (roomSnap.exists()) {
+        const ts = roomSnap.data().createdAt as { seconds: number } | null
+        if (ts) {
+          const created = new Date(ts.seconds * 1000)
+          setRoomCreatedAt(created)
+          const diffMs = Date.now() - created.getTime()
+          setDDay(Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1)
+        }
+      }
+
       const q = query(
         collection(db, 'rooms', roomId, 'messages'),
         orderBy('createdAt', 'asc')
@@ -49,6 +63,19 @@ export default function RoomStats({ roomId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* D-Day 배너 */}
+      {dDay !== null && (
+        <div className="bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl p-5 text-white text-center shadow-lg shadow-violet-200 dark:shadow-none">
+          <p className="text-xs font-semibold opacity-80 tracking-widest uppercase mb-1">우리 함께한 지</p>
+          <p className="text-5xl font-black tracking-tight">{dDay}<span className="text-2xl font-bold ml-1">일</span></p>
+          {roomCreatedAt && (
+            <p className="text-xs opacity-70 mt-2">
+              {roomCreatedAt.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 시작
+            </p>
+          )}
+        </div>
+      )}
+
       {/* 총계 */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-violet-50 dark:bg-violet-900/30 rounded-2xl p-4 text-center">
