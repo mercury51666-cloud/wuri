@@ -471,8 +471,16 @@ export default function RoomPage() {
       {/* 햄버거 사이드 메뉴 */}
       {showMenu && (
         <div className="fixed inset-0 z-[2000] flex">
-          <div className="menu-enter w-64 bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col gap-2 shadow-2xl" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)', paddingBottom: '1.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
-            <div className="flex items-center gap-3 mb-4 px-2">
+          <div
+            className="menu-enter w-64 h-full bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col shadow-2xl"
+            style={{
+              paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4 px-2 shrink-0">
               <div className="w-10 h-10 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl">
                 {room.emoji}
               </div>
@@ -481,48 +489,52 @@ export default function RoomPage() {
                 <p className="text-xs text-gray-400 dark:text-gray-500">멤버 {room.memberIds.length}명</p>
               </div>
             </div>
-            {TABS.map((tab) => (
-              <button key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setShowMenu(false) }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors text-left ${
-                  activeTab === tab.id
-                    ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
-                }`}
-              >
-                <span className="text-lg">{tab.emoji}</span>
-                <span>{tab.label}</span>
-              </button>
-            ))}
 
-            {/* 멤버 목록 */}
-            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
-              <p className="text-xs font-semibold text-gray-400 dark:text-gray-600 px-2 mb-2 tracking-widest uppercase">멤버</p>
-              <div className="space-y-1">
-                {room.memberIds.map((uid) => {
-                  const profile = memberProfiles[uid]
-                  const isMe = uid === user?.uid
-                  return (
-                    <div key={uid} className="flex items-center gap-3 px-2 py-2 rounded-xl">
-                      <div
-                        className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 cursor-pointer active:scale-90 transition-transform"
-                        onClick={() => profile && setViewingProfile({ name: profile.displayName, photoURL: profile.photoURL ?? undefined })}
-                      >
-                        {profile?.photoURL
-                          ? <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
-                          : (profile?.displayName ?? '?')[0]
-                        }
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 -mx-1 px-1">
+              {TABS.map((tab) => (
+                <button key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); setShowMenu(false) }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors text-left shrink-0 ${
+                    activeTab === tab.id
+                      ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-lg">{tab.emoji}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+
+              {/* 멤버 목록 */}
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-600 px-2 mb-2 tracking-widest uppercase">멤버</p>
+                <div className="space-y-1">
+                  {room.memberIds.map((uid) => {
+                    const profile = memberProfiles[uid]
+                    const isMe = uid === user?.uid
+                    return (
+                      <div key={uid} className="flex items-center gap-3 px-2 py-2 rounded-xl">
+                        <div
+                          className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 cursor-pointer active:scale-90 transition-transform"
+                          onClick={() => profile && setViewingProfile({ name: profile.displayName, photoURL: profile.photoURL ?? undefined })}
+                        >
+                          {profile?.photoURL
+                            ? <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
+                            : (profile?.displayName ?? '?')[0]
+                          }
+                        </div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                          {profile?.displayName ?? '불러오는 중...'}
+                          {isMe && <span className="text-xs text-violet-400 ml-1">(나)</span>}
+                        </span>
                       </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                        {profile?.displayName ?? '불러오는 중...'}
-                        {isMe && <span className="text-xs text-violet-400 ml-1">(나)</span>}
-                      </span>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
-            <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
+
+            <div className="shrink-0 flex flex-col gap-2 pt-4 mt-2 border-t border-gray-100 dark:border-white/10">
               {isJoined && (
                 <button onClick={openRename} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                   <span>✏️</span><span>방 이름 변경</span>
