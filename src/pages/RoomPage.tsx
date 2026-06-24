@@ -14,6 +14,7 @@ import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
+import PhotoGallery from '../components/PhotoGallery'
 import { useUserProfiles } from '../hooks/useUserProfiles'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
@@ -42,12 +43,14 @@ interface Room {
   name: string
   emoji: string
   memberIds: string[]
+  pinnedMessageId?: string | null
 }
 
-type Tab = 'chat' | 'mascot' | 'mission' | 'location' | 'stats' | 'mood'
+type Tab = 'chat' | 'gallery' | 'mascot' | 'mission' | 'location' | 'stats' | 'mood'
 
 const TABS: { id: Tab; emoji: string; label: string }[] = [
   { id: 'chat',     emoji: '💬', label: '채팅' },
+  { id: 'gallery',  emoji: '🖼️', label: '사진' },
   { id: 'mood',     emoji: '😊', label: '기분' },
   { id: 'mascot',   emoji: '🐾', label: '마스코트' },
   { id: 'mission',  emoji: '🎯', label: '미션' },
@@ -77,6 +80,7 @@ export default function RoomPage() {
   const [searchIdx, setSearchIdx] = useState(0)
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
   const [, setTypingTick] = useState(0)
@@ -102,7 +106,32 @@ export default function RoomPage() {
     if (!user || !roomId || msg.authorId !== user.uid) return
     if (!confirm('메시지를 삭제할까요?')) return
     await deleteDoc(doc(db, 'rooms', roomId, 'messages', msg.id))
+    if (room?.pinnedMessageId === msg.id) {
+      await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: null })
+    }
     setReactionTarget(null)
+  }
+
+  const pinMessage = async (msg: Message) => {
+    if (!roomId) return
+    await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: msg.id })
+    setReactionTarget(null)
+  }
+
+  const unpinMessage = async () => {
+    if (!roomId) return
+    await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: null })
+  }
+
+  const pinnedMessage = useMemo(() => {
+    if (!room?.pinnedMessageId) return null
+    return messages.find((m) => m.id === room.pinnedMessageId) ?? null
+  }, [room?.pinnedMessageId, messages])
+
+  const scrollToMessage = (msgId: string) => {
+    messageRefs.current.get(msgId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(msgId)
+    setTimeout(() => setHighlightId(null), 1800)
   }
 
   const searchResults = useMemo(() => {
@@ -379,6 +408,26 @@ export default function RoomPage() {
 
   return (
     <div className="page-enter h-full bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto overflow-hidden">
+      {viewingPhoto && (
+        <div
+          className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <img
+            src={viewingPhoto}
+            alt="사진"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setViewingPhoto(null)}
+            className="absolute top-6 right-6 text-white/80 text-2xl px-2 safe-top"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 프로필 보기 모달 */}
       {viewingProfile && (
         <div
@@ -548,6 +597,31 @@ export default function RoomPage() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {activeTab === 'chat' && (
           <>
+            {pinnedMessage && (
+              <div className="mx-4 mt-3 mb-0 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl px-3 py-2.5 flex items-start gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => scrollToMessage(pinnedMessage.id)}
+                  className="flex-1 min-w-0 text-left active:opacity-70 transition-opacity"
+                >
+                  <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">📌 공지</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
+                    <span className="font-semibold">{pinnedMessage.authorName}</span>
+                    {' · '}
+                    {pinnedMessage.imageURL && !pinnedMessage.text
+                      ? '📷 사진'
+                      : pinnedMessage.text}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={unpinMessage}
+                  className="text-xs text-amber-600/70 dark:text-amber-400/70 px-2 py-1 shrink-0 active:scale-95"
+                >
+                  해제
+                </button>
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" onClick={() => setReactionTarget(null)}>
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -639,7 +713,8 @@ export default function RoomPage() {
                               <img
                                 src={msg.imageURL}
                                 alt="사진"
-                                className={`max-w-[220px] max-h-[280px] object-cover ${msg.replyTo || msg.text ? 'mt-1 rounded-xl' : 'rounded-2xl'}`}
+                                onClick={(e) => { e.stopPropagation(); setViewingPhoto(msg.imageURL!) }}
+                                className={`max-w-[220px] max-h-[280px] object-cover cursor-pointer ${msg.replyTo || msg.text ? 'mt-1 rounded-xl' : 'rounded-2xl'}`}
                               />
                             )}
                           </div>
@@ -648,12 +723,18 @@ export default function RoomPage() {
                         {/* 리액션 팝업 */}
                         {reactionTarget === msg.id && (
                           <div className={`flex flex-col gap-1.5 ${isMine ? 'items-end mr-1' : 'items-start ml-1'}`}>
-                            <div className="flex gap-1">
+                            <div className="flex flex-wrap gap-1">
                               <button
                                 onClick={() => startReply(msg)}
                                 className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-xl active:scale-95 transition-all"
                               >
                                 ↩ 답장
+                              </button>
+                              <button
+                                onClick={() => pinMessage(msg)}
+                                className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 shadow-xl active:scale-95 transition-all"
+                              >
+                                📌 공지
                               </button>
                               {isMine && (
                                 <button
@@ -751,6 +832,12 @@ export default function RoomPage() {
               </form>
             </div>
           </>
+        )}
+
+        {activeTab === 'gallery' && (
+          <div className="flex-1 overflow-y-auto p-4">
+            <PhotoGallery messages={messages} onPhotoClick={setViewingPhoto} />
+          </div>
         )}
 
         {activeTab === 'mood' && roomId && <div className="flex-1 overflow-y-auto p-4"><MoodBoard roomId={roomId} /></div>}
