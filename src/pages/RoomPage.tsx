@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, collection, query, orderBy,
-  onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove,
+  onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, setDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useMessageNotifications } from '../hooks/useNotifications'
+import { countUnreadByOthers } from '../hooks/useReadStatus'
 import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
@@ -63,6 +64,7 @@ export default function RoomPage() {
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
+  const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
@@ -97,6 +99,30 @@ export default function RoomPage() {
       setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message)))
     })
   }, [roomId])
+
+  useEffect(() => {
+    if (!roomId) return
+    return onSnapshot(collection(db, 'rooms', roomId, 'readStatus'), (snap) => {
+      const map: Record<string, number> = {}
+      snap.docs.forEach((d) => {
+        const ts = d.data().lastReadAt as { seconds: number } | undefined
+        if (ts?.seconds) map[d.id] = ts.seconds * 1000
+      })
+      setMemberReadAt(map)
+    })
+  }, [roomId])
+
+  // 채팅 탭에서 메시지 보면 읽음 처리
+  useEffect(() => {
+    if (!user || !roomId || activeTab !== 'chat' || messages.length === 0) return
+    const latest = messages[messages.length - 1]
+    if (!latest.createdAt) return
+    setDoc(
+      doc(db, 'rooms', roomId, 'readStatus', user.uid),
+      { userId: user.uid, lastReadAt: latest.createdAt },
+      { merge: true },
+    ).catch(() => {})
+  }, [user, roomId, activeTab, messages])
 
   useEffect(() => {
     if (activeTab === 'chat') bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -328,6 +354,9 @@ export default function RoomPage() {
               )}
               {messages.map((msg, idx) => {
                 const isMine = msg.authorId === user?.uid
+                const unreadByOthers = isMine && room
+                  ? countUnreadByOthers(msg, room.memberIds, memberReadAt)
+                  : 0
                 const prevMsg = idx > 0 ? messages[idx - 1] : null
                 const showDateLabel = !prevMsg || (
                   msg.createdAt && prevMsg.createdAt &&
@@ -362,24 +391,31 @@ export default function RoomPage() {
                       )}
                       <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
-                        <div
-                          className={`relative cursor-pointer select-none overflow-hidden ${
-                            msg.imageURL
-                              ? 'rounded-2xl'
-                              : `px-4 py-2.5 rounded-2xl text-sm ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'}`
-                          }`}
-                          onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
-                          onTouchStart={() => {
-                            const t = setTimeout(() => setReactionTarget(reactionTarget === msg.id ? null : msg.id), 500)
-                            const cancel = () => clearTimeout(t)
-                            window.addEventListener('touchend', cancel, { once: true })
-                            window.addEventListener('touchmove', cancel, { once: true })
-                          }}
-                        >
-                          {msg.imageURL
-                            ? <img src={msg.imageURL} alt="사진" className="max-w-[220px] max-h-[280px] object-cover rounded-2xl" />
-                            : msg.text
-                          }
+                        <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                          {isMine && unreadByOthers > 0 && (
+                            <span className="text-[11px] font-bold text-violet-400 dark:text-violet-300 mb-2 shrink-0 tabular-nums">
+                              {unreadByOthers}
+                            </span>
+                          )}
+                          <div
+                            className={`relative cursor-pointer select-none overflow-hidden ${
+                              msg.imageURL
+                                ? 'rounded-2xl'
+                                : `px-4 py-2.5 rounded-2xl text-sm ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'}`
+                            }`}
+                            onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
+                            onTouchStart={() => {
+                              const t = setTimeout(() => setReactionTarget(reactionTarget === msg.id ? null : msg.id), 500)
+                              const cancel = () => clearTimeout(t)
+                              window.addEventListener('touchend', cancel, { once: true })
+                              window.addEventListener('touchmove', cancel, { once: true })
+                            }}
+                          >
+                            {msg.imageURL
+                              ? <img src={msg.imageURL} alt="사진" className="max-w-[220px] max-h-[280px] object-cover rounded-2xl" />
+                              : msg.text
+                            }
+                          </div>
                         </div>
 
                         {/* 리액션 팝업 */}

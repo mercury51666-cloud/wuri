@@ -8,12 +8,14 @@ import {
   limit,
   onSnapshot,
   addDoc,
+  doc,
   serverTimestamp,
 } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import { auth, db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
+import { countUnreadMessages, toMs } from '../hooks/useReadStatus'
 import ProfileModal from '../components/ProfileModal'
 import OnboardingModal from '../components/OnboardingModal'
 import InstallBanner from '../components/InstallBanner'
@@ -40,8 +42,8 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem('wuri_onboarded')
   })
-  const [lastSeenAt, setLastSeenAt] = useState<Record<string, number>>({})
-  const [latestMsgAt, setLatestMsgAt] = useState<Record<string, number>>({})
+  const [myLastRead, setMyLastRead] = useState<Record<string, number>>({})
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
 
   const emojis = ['🏠', '🌙', '🌈', '🎮', '🎵', '📚', '🍕', '🐾', '🌸', '⭐']
 
@@ -62,48 +64,35 @@ export default function HomePage() {
     return () => unsubscribe()
   }, [user])
 
-  // 각 방의 최신 메시지 시간 구독
+  // 각 방의 내 읽음 시각 구독
   useEffect(() => {
-    if (rooms.length === 0) return
+    if (!user || rooms.length === 0) return
+    const unsubs = rooms.map((room) =>
+      onSnapshot(doc(db, 'rooms', room.id, 'readStatus', user.uid), (snap) => {
+        const ts = snap.data()?.lastReadAt as { seconds: number } | undefined
+        setMyLastRead((prev) => ({ ...prev, [room.id]: toMs(ts) }))
+      }),
+    )
+    return () => unsubs.forEach((u) => u())
+  }, [user, rooms])
+
+  // 각 방의 안 읽은 메시지 수 계산
+  useEffect(() => {
+    if (!user || rooms.length === 0) return
     const unsubs = rooms.map((room) => {
       const q = query(
         collection(db, 'rooms', room.id, 'messages'),
         orderBy('createdAt', 'desc'),
-        limit(1)
+        limit(100),
       )
       return onSnapshot(q, (snap) => {
-        if (!snap.empty) {
-          const ts = snap.docs[0].data().createdAt as { seconds: number } | null
-          if (ts) {
-            setLatestMsgAt((prev) => ({ ...prev, [room.id]: ts.seconds * 1000 }))
-          }
-        }
+        const msgs = snap.docs.map((d) => d.data() as { authorId: string; createdAt: { seconds: number } | null })
+        const count = countUnreadMessages(msgs, myLastRead[room.id] ?? 0, user.uid)
+        setUnreadCounts((prev) => ({ ...prev, [room.id]: count }))
       })
     })
     return () => unsubs.forEach((u) => u())
-  }, [rooms])
-
-  // 방 입장 시 lastSeenAt 갱신
-  const handleEnterRoom = (roomId: string) => {
-    const now = Date.now()
-    setLastSeenAt((prev) => ({ ...prev, [roomId]: now }))
-    const stored = JSON.parse(localStorage.getItem('wuri_seen') ?? '{}')
-    stored[roomId] = now
-    localStorage.setItem('wuri_seen', JSON.stringify(stored))
-    navigate(`/room/${roomId}`)
-  }
-
-  // 초기화 시 localStorage에서 lastSeenAt 불러오기
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('wuri_seen') ?? '{}')
-    setLastSeenAt(stored)
-  }, [])
-
-  const hasUnread = (roomId: string) => {
-    const latest = latestMsgAt[roomId]
-    const seen = lastSeenAt[roomId] ?? 0
-    return latest && latest > seen
-  }
+  }, [user, rooms, myLastRead])
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -206,25 +195,30 @@ export default function HomePage() {
             {rooms.map((room) => (
               <button
                 key={room.id}
-                onClick={() => handleEnterRoom(room.id)}
+                onClick={() => navigate(`/room/${room.id}`)}
                 className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 hover:shadow-md dark:hover:bg-white/10 active:scale-[0.98] rounded-2xl p-4 flex items-center gap-4 transition-all text-left shadow-sm"
               >
                 <div className="relative w-12 h-12 shrink-0">
                   <div className="w-12 h-12 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl border border-violet-200 dark:border-violet-500/20">
                     {room.emoji}
                   </div>
-                  {hasUnread(room.id) && (
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white dark:border-[#0d0d0d]" />
+                  {(unreadCounts[room.id] ?? 0) > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-rose-500 text-white text-[11px] font-bold rounded-full border-2 border-white dark:border-[#0d0d0d] flex items-center justify-center">
+                      {(unreadCounts[room.id] ?? 0) > 99 ? '99+' : unreadCounts[room.id]}
+                    </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold truncate ${hasUnread(room.id) ? 'text-gray-900 dark:text-white' : 'text-gray-800 dark:text-white'}`}>{room.name}</p>
+                  <p className={`font-bold truncate ${(unreadCounts[room.id] ?? 0) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-800 dark:text-white'}`}>{room.name}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">멤버 {room.memberIds?.length ?? 1}명</p>
                 </div>
-                {hasUnread(room.id) && (
-                  <span className="w-2 h-2 bg-rose-500 rounded-full" />
+                {(unreadCounts[room.id] ?? 0) > 0 ? (
+                  <span className="min-w-[24px] h-6 px-1.5 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0">
+                    {(unreadCounts[room.id] ?? 0) > 99 ? '99+' : unreadCounts[room.id]}
+                  </span>
+                ) : (
+                  <span className="text-gray-300 dark:text-gray-600 text-lg">›</span>
                 )}
-                {!hasUnread(room.id) && <span className="text-gray-300 dark:text-gray-600 text-lg">›</span>}
               </button>
             ))}
           </div>
