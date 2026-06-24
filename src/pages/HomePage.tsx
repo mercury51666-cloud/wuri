@@ -17,7 +17,6 @@ import { useTheme } from '../contexts/ThemeContext'
 import ProfileModal from '../components/ProfileModal'
 import OnboardingModal from '../components/OnboardingModal'
 import InstallBanner from '../components/InstallBanner'
-import { useFCMToken } from '../hooks/useFCMToken'
 
 interface Room {
   id: string
@@ -30,7 +29,6 @@ interface Room {
 export default function HomePage() {
   const { user } = useAuthState()
   const { dark, toggleDark } = useTheme()
-  const { enabled: notifEnabled, permission, enableNotifications, disableNotifications } = useFCMToken(user?.uid)
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [loadingRooms, setLoadingRooms] = useState(true)
@@ -145,21 +143,6 @@ export default function HomePage() {
           WU<span className="text-violet-400">RI</span>
         </h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={async () => {
-              if (notifEnabled) {
-                await disableNotifications()
-              } else if (permission === 'denied') {
-                alert('알림이 차단되어 있어요.\n\n아이폰: 설정 → Safari → 웹사이트 알림 → WURI → 허용\n안드로이드: 설정 → 앱 → Chrome → 알림 → 허용')
-              } else {
-                await enableNotifications()
-              }
-            }}
-            className="text-lg px-1 active:scale-90 transition-all"
-            title={notifEnabled ? '알림 끄기' : '알림 켜기'}
-          >
-            {notifEnabled ? '🔔' : '🔕'}
-          </button>
           <button onClick={toggleDark} className="text-lg px-1">{dark ? '☀️' : '🌙'}</button>
           <button
             onClick={() => setShowProfile(true)}

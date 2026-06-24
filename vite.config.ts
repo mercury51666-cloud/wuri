@@ -8,12 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-
+      selfDestroying: true,
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
         name: 'WURI — 우리만의 공간',
