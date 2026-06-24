@@ -226,15 +226,20 @@ export default function RoomPage() {
   }, [roomId])
 
   const autoJoinAttempted = useRef(false)
+  const skipAutoJoinRef = useRef(false)
 
   useEffect(() => {
     autoJoinAttempted.current = false
+    skipAutoJoinRef.current = false
   }, [roomId])
 
   // 초대 링크로 들어온 경우 자동 참여
   useEffect(() => {
-    if (!user || !roomId || !room || autoJoinAttempted.current) return
-    if (room.memberIds.includes(user.uid)) return
+    if (!user || !roomId || !room || autoJoinAttempted.current || skipAutoJoinRef.current) return
+    if (room.memberIds.includes(user.uid)) {
+      autoJoinAttempted.current = true
+      return
+    }
     autoJoinAttempted.current = true
     setJoining(true)
     updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayUnion(user.uid) })
@@ -395,8 +400,15 @@ export default function RoomPage() {
 
   const leaveRoom = async () => {
     if (!user || !roomId) return
-    await updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayRemove(user.uid) })
-    navigate('/')
+    skipAutoJoinRef.current = true
+    setShowLeave(false)
+    try {
+      await updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayRemove(user.uid) })
+      navigate('/')
+    } catch {
+      skipAutoJoinRef.current = false
+      alert('방 나가기에 실패했어요. 다시 시도해주세요.')
+    }
   }
 
   const copyInviteLink = () => {
