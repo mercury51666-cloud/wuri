@@ -62,6 +62,7 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
+  const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
@@ -198,6 +199,25 @@ export default function RoomPage() {
 
   return (
     <div className="page-enter min-h-screen bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto">
+      {/* 프로필 보기 모달 */}
+      {viewingProfile && (
+        <div
+          className="fixed inset-0 z-[3000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => setViewingProfile(null)}
+        >
+          <div className="flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-violet-200">
+              {viewingProfile.photoURL
+                ? <img src={viewingProfile.photoURL} alt={viewingProfile.name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center text-5xl font-black text-violet-600">{viewingProfile.name[0]}</div>
+              }
+            </div>
+            <p className="text-white text-xl font-bold">{viewingProfile.name}</p>
+            <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
+          </div>
+        </div>
+      )}
+
       {/* 햄버거 사이드 메뉴 */}
       {showMenu && (
         <div className="fixed inset-0 z-[2000] flex">
@@ -234,7 +254,10 @@ export default function RoomPage() {
                   const isMe = uid === user?.uid
                   return (
                     <div key={uid} className="flex items-center gap-3 px-2 py-2 rounded-xl">
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0">
+                      <div
+                        className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 cursor-pointer active:scale-90 transition-transform"
+                        onClick={() => profile && setViewingProfile({ name: profile.displayName, photoURL: profile.photoURL ?? undefined })}
+                      >
                         {profile?.photoURL
                           ? <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
                           : (profile?.displayName ?? '?')[0]
@@ -322,12 +345,18 @@ export default function RoomPage() {
                     )}
                     <div className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                       {!isMine && (
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1">
+                        <div
+                          className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1 cursor-pointer active:scale-90 transition-transform"
+                          onClick={() => setViewingProfile({ name: msg.authorName, photoURL: msg.authorPhotoURL })}
+                        >
                           {msg.authorPhotoURL ? <img src={msg.authorPhotoURL} alt={msg.authorName} className="w-full h-full object-cover" /> : msg.authorName[0]}
                         </div>
                       )}
                       {isMine && (
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1">
+                        <div
+                          className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1 cursor-pointer active:scale-90 transition-transform"
+                          onClick={() => setViewingProfile({ name: user?.displayName ?? '나', photoURL: user?.photoURL ?? undefined })}
+                        >
                           {user?.photoURL ? <img src={user.photoURL} alt="나" className="w-full h-full object-cover" /> : (user?.displayName ?? '?')[0]}
                         </div>
                       )}
