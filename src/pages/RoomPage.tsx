@@ -15,7 +15,9 @@ import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
 import PhotoGallery from '../components/PhotoGallery'
+import RoomAvatar from '../components/RoomAvatar'
 import { useUserProfiles } from '../hooks/useUserProfiles'
+import { uploadToCloudinary } from '../utils/cloudinary'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
@@ -41,7 +43,8 @@ interface Message {
 
 interface Room {
   name: string
-  emoji: string
+  emoji?: string
+  photoURL?: string
   memberIds: string[]
   pinnedMessageId?: string | null
 }
@@ -74,6 +77,7 @@ export default function RoomPage() {
   const [showRename, setShowRename] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [renaming, setRenaming] = useState(false)
+  const [changingPhoto, setChangingPhoto] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -92,6 +96,7 @@ export default function RoomPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const roomPhotoInputRef = useRef<HTMLInputElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
   const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
@@ -363,16 +368,10 @@ export default function RoomPage() {
     if (!user || !roomId) return
     setSending(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET)
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: 'POST', body: formData,
-      })
-      const data = await res.json()
+      const imageURL = await uploadToCloudinary(file)
       const payload: Record<string, unknown> = {
         text: '',
-        imageURL: data.secure_url,
+        imageURL,
         authorId: user.uid,
         authorName: user.displayName || '친구',
         authorPhotoURL: user.photoURL || '',
@@ -390,6 +389,21 @@ export default function RoomPage() {
       setReplyTarget(null)
     } finally {
       setSending(false)
+    }
+  }
+
+  const changeRoomPhoto = async (file: File) => {
+    if (!roomId) return
+    setChangingPhoto(true)
+    try {
+      const photoURL = await uploadToCloudinary(file)
+      await updateDoc(doc(db, 'rooms', roomId), { photoURL })
+      setShowMenu(false)
+    } catch {
+      alert('방 사진 변경에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setChangingPhoto(false)
+      if (roomPhotoInputRef.current) roomPhotoInputRef.current.value = ''
     }
   }
 
@@ -533,9 +547,7 @@ export default function RoomPage() {
             }}
           >
             <div className="flex items-center gap-3 mb-4 px-2 shrink-0">
-              <div className="w-10 h-10 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl">
-                {room.emoji}
-              </div>
+              <RoomAvatar photoURL={room.photoURL} emoji={room.emoji} name={room.name} className="w-10 h-10" />
               <div>
                 <p className="font-bold text-gray-800 dark:text-white text-sm">{room.name}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">멤버 {room.memberIds.length}명</p>
@@ -588,9 +600,18 @@ export default function RoomPage() {
 
             <div className="shrink-0 flex flex-col gap-2 pt-4 mt-2 border-t border-gray-100 dark:border-white/10">
               {isJoined && (
-                <button onClick={openRename} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                  <span>✏️</span><span>방 이름 변경</span>
-                </button>
+                <>
+                  <button onClick={openRename} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                    <span>✏️</span><span>방 이름 변경</span>
+                  </button>
+                  <button
+                    onClick={() => roomPhotoInputRef.current?.click()}
+                    disabled={changingPhoto}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
+                  >
+                    <span>🖼️</span><span>{changingPhoto ? '사진 변경 중...' : '방 사진 변경'}</span>
+                  </button>
+                </>
               )}
               <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                 <span>🔗</span><span>친구 초대</span>
@@ -995,6 +1016,17 @@ export default function RoomPage() {
           </div>
         </div>
       )}
+
+      <input
+        ref={roomPhotoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) changeRoomPhoto(file)
+        }}
+      />
     </div>
   )
 }

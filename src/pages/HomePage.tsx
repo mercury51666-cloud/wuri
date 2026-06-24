@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   collection,
@@ -19,11 +19,14 @@ import { countUnreadMessages, toMs } from '../hooks/useReadStatus'
 import ProfileModal from '../components/ProfileModal'
 import OnboardingModal from '../components/OnboardingModal'
 import InstallBanner from '../components/InstallBanner'
+import RoomAvatar from '../components/RoomAvatar'
+import { uploadToCloudinary } from '../utils/cloudinary'
 
 interface Room {
   id: string
   name: string
-  emoji: string
+  emoji?: string
+  photoURL?: string
   memberIds: string[]
   createdAt: unknown
 }
@@ -37,15 +40,38 @@ export default function HomePage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [roomName, setRoomName] = useState('')
-  const [roomEmoji, setRoomEmoji] = useState('🏠')
+  const [roomPhotoFile, setRoomPhotoFile] = useState<File | null>(null)
+  const [roomPhotoPreview, setRoomPhotoPreview] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem('wuri_onboarded')
   })
   const [myLastRead, setMyLastRead] = useState<Record<string, number>>({})
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
 
-  const emojis = ['🏠', '🌙', '🌈', '🎮', '🎵', '📚', '🍕', '🐾', '🌸', '⭐']
+  const resetCreateForm = () => {
+    setRoomName('')
+    setRoomPhotoFile(null)
+    setRoomPhotoPreview(null)
+  }
+
+  const handlePhotoSelect = (file: File | null) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 선택할 수 있어요.')
+      return
+    }
+    setRoomPhotoFile(file)
+    setRoomPhotoPreview(URL.createObjectURL(file))
+  }
+
+  const clearRoomPhoto = () => {
+    setRoomPhotoFile(null)
+    if (roomPhotoPreview) URL.revokeObjectURL(roomPhotoPreview)
+    setRoomPhotoPreview(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+  }
 
   useEffect(() => {
     if (!user) return
@@ -99,17 +125,23 @@ export default function HomePage() {
     if (!user || !roomName.trim()) return
     setCreating(true)
     try {
+      let photoURL: string | undefined
+      if (roomPhotoFile) {
+        photoURL = await uploadToCloudinary(roomPhotoFile)
+      }
       const docRef = await addDoc(collection(db, 'rooms'), {
         name: roomName.trim(),
-        emoji: roomEmoji,
+        ...(photoURL ? { photoURL } : {}),
         memberIds: [user.uid],
         memberCount: 1,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
       })
       setShowCreate(false)
-      setRoomName('')
+      resetCreateForm()
       navigate(`/room/${docRef.id}`)
+    } catch {
+      alert('방 만들기에 실패했어요. 다시 시도해주세요.')
     } finally {
       setCreating(false)
     }
@@ -199,9 +231,7 @@ export default function HomePage() {
                 className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 hover:shadow-md dark:hover:bg-white/10 active:scale-[0.98] rounded-2xl p-4 flex items-center gap-4 transition-all text-left shadow-sm"
               >
                 <div className="relative w-12 h-12 shrink-0">
-                  <div className="w-12 h-12 bg-violet-100 dark:bg-violet-500/20 rounded-xl flex items-center justify-center text-2xl border border-violet-200 dark:border-violet-500/20">
-                    {room.emoji}
-                  </div>
+                  <RoomAvatar photoURL={room.photoURL} emoji={room.emoji} name={room.name} className="w-12 h-12" />
                   {(unreadCounts[room.id] ?? 0) > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-rose-500 text-white text-[11px] font-bold rounded-full border-2 border-white dark:border-[#0d0d0d] flex items-center justify-center">
                       {(unreadCounts[room.id] ?? 0) > 99 ? '99+' : unreadCounts[room.id]}
@@ -231,21 +261,40 @@ export default function HomePage() {
             <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-5">새 방 만들기</h3>
             <form onSubmit={handleCreateRoom} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-2 tracking-widest uppercase">방 아이콘</label>
-                <div className="flex gap-2 flex-wrap">
-                  {emojis.map((e) => (
+                <label className="block text-xs font-medium text-gray-500 mb-2 tracking-widest uppercase">방 사진</label>
+                <div className="flex items-center gap-4">
+                  <RoomAvatar
+                    photoURL={roomPhotoPreview ?? undefined}
+                    name={roomName}
+                    className="w-16 h-16"
+                  />
+                  <div className="flex flex-col gap-2">
                     <button
-                      key={e}
                       type="button"
-                      onClick={() => setRoomEmoji(e)}
-                      className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-colors ${
-                        roomEmoji === e ? 'bg-violet-200 dark:bg-violet-500/30 ring-2 ring-violet-400 dark:ring-violet-500' : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20'
-                      }`}
+                      onClick={() => photoInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 text-sm font-semibold hover:bg-violet-200 dark:hover:bg-violet-500/30 transition-colors"
                     >
-                      {e}
+                      사진 선택
                     </button>
-                  ))}
+                    {roomPhotoPreview && (
+                      <button
+                        type="button"
+                        onClick={clearRoomPhoto}
+                        className="px-4 py-2 rounded-xl text-gray-500 dark:text-gray-400 text-sm hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                      >
+                        사진 제거
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handlePhotoSelect(e.target.files?.[0] ?? null)}
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">갤러리에서 원하는 사진을 골라 방 대표 이미지로 쓸 수 있어요.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1 tracking-widest uppercase">방 이름</label>
@@ -260,7 +309,7 @@ export default function HomePage() {
                 />
               </div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
+                <button type="button" onClick={() => { setShowCreate(false); resetCreateForm() }} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
                 <button type="submit" disabled={creating || !roomName.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{creating ? '만드는 중...' : '만들기'}</button>
               </div>
             </form>
