@@ -83,7 +83,7 @@ export default function LocationMap({ roomId }: Props) {
   }, [roomId])
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 30000)
+    const id = setInterval(() => setTick((t) => t + 1), 5000)
     return () => clearInterval(id)
   }, [])
 
@@ -117,7 +117,7 @@ export default function LocationMap({ roomId }: Props) {
         alert('위치 권한을 허용해주세요!')
         setLoading(false)
       },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     )
   }
 

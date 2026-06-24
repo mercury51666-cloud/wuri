@@ -444,7 +444,8 @@ export default function RoomPage() {
         {activeTab === 'mood' && roomId && <div className="flex-1 overflow-y-auto p-4"><MoodBoard roomId={roomId} /></div>}
         {activeTab === 'mascot' && roomId && <div className="flex-1 overflow-y-auto p-4"><Mascot roomId={roomId} totalMessages={messages.length} /></div>}
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
-        {activeTab === 'location' && roomId && <div className="flex-1 overflow-y-auto p-4"><LocationMap roomId={roomId} /></div>}
+        {/* 위치는 탭 전환 시에도 계속 추적하기 위해 숨김 처리 방식 사용 */}
+        {roomId && <div className={`flex-1 overflow-y-auto p-4 ${activeTab === 'location' ? 'flex flex-col' : 'hidden'}`}><LocationMap roomId={roomId} /></div>}
         {activeTab === 'stats' && roomId && <div className="flex-1 overflow-y-auto p-4"><RoomStats roomId={roomId} /></div>}
       </div>
 
