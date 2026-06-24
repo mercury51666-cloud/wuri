@@ -12,6 +12,7 @@ import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
+import MoodBoard from '../components/MoodBoard'
 import { useUserProfiles } from '../hooks/useUserProfiles'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
@@ -34,10 +35,11 @@ interface Room {
   memberIds: string[]
 }
 
-type Tab = 'chat' | 'mascot' | 'mission' | 'location' | 'stats'
+type Tab = 'chat' | 'mascot' | 'mission' | 'location' | 'stats' | 'mood'
 
 const TABS: { id: Tab; emoji: string; label: string }[] = [
   { id: 'chat',     emoji: '💬', label: '채팅' },
+  { id: 'mood',     emoji: '😊', label: '기분' },
   { id: 'mascot',   emoji: '🐾', label: '마스코트' },
   { id: 'mission',  emoji: '🎯', label: '미션' },
   { id: 'location', emoji: '📍', label: '위치' },
@@ -410,6 +412,7 @@ export default function RoomPage() {
           </>
         )}
 
+        {activeTab === 'mood' && roomId && <div className="flex-1 overflow-y-auto p-4"><MoodBoard roomId={roomId} /></div>}
         {activeTab === 'mascot' && roomId && <div className="flex-1 overflow-y-auto p-4"><Mascot roomId={roomId} totalMessages={messages.length} /></div>}
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
         {activeTab === 'location' && roomId && <div className="flex-1 overflow-y-auto p-4"><LocationMap roomId={roomId} /></div>}
