@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, collection, query, orderBy,
-  onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, setDoc,
+  onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
@@ -65,7 +65,10 @@ export default function RoomPage() {
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
+  const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
+  const [, setTypingTick] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
   const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
@@ -125,6 +128,49 @@ export default function RoomPage() {
   }, [user, roomId, activeTab, messages])
 
   useEffect(() => {
+    if (!roomId) return
+    return onSnapshot(collection(db, 'rooms', roomId, 'typing'), (snap) => {
+      const map: Record<string, { userName: string; updatedAt: number }> = {}
+      snap.docs.forEach((d) => {
+        const data = d.data()
+        map[d.id] = { userName: data.userName as string, updatedAt: data.updatedAt as number }
+      })
+      setTypingRaw(map)
+    })
+  }, [roomId])
+
+  useEffect(() => {
+    const id = setInterval(() => setTypingTick((t) => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      if (user && roomId) deleteDoc(doc(db, 'rooms', roomId, 'typing', user.uid)).catch(() => {})
+    }
+  }, [user, roomId])
+
+  const clearTyping = () => {
+    if (!user || !roomId) return
+    deleteDoc(doc(db, 'rooms', roomId, 'typing', user.uid)).catch(() => {})
+  }
+
+  const handleTyping = () => {
+    if (!user || !roomId || activeTab !== 'chat') return
+    setDoc(doc(db, 'rooms', roomId, 'typing', user.uid), {
+      userName: user.displayName || '친구',
+      updatedAt: Date.now(),
+    }).catch(() => {})
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(clearTyping, 3000)
+  }
+
+  const typingUsers = Object.entries(typingRaw)
+    .filter(([uid, t]) => uid !== user?.uid && Date.now() - t.updatedAt < 4000)
+    .map(([uid, t]) => ({ userId: uid, userName: t.userName }))
+
+  useEffect(() => {
     if (activeTab === 'chat') bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, activeTab])
 
@@ -142,6 +188,7 @@ export default function RoomPage() {
         createdAt: serverTimestamp(),
       })
       setText('')
+      clearTyping()
     } finally {
       setSending(false)
     }
@@ -457,15 +504,27 @@ export default function RoomPage() {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="border-t border-gray-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md px-4 py-3 safe-bottom">
-              <form onSubmit={sendMessage} className="flex items-center gap-2">
+            <div className="border-t border-gray-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md safe-bottom">
+              {typingUsers.length > 0 && (
+                <div className="px-4 pt-2 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0].userName}님이 입력 중...`
+                    : `${typingUsers.map((t) => t.userName).join(', ')}님이 입력 중...`}
+                </div>
+              )}
+              <form onSubmit={sendMessage} className="flex items-center gap-2 px-4 py-3">
                 <label className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 active:scale-90 flex items-center justify-center shrink-0 cursor-pointer transition-all">
                   <span className="text-lg">🖼️</span>
                   <input type="file" accept="image/*" className="hidden" disabled={sending}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
                   />
                 </label>
-                <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="메시지 보내기..."
+                <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }} placeholder="메시지 보내기..."
                   className="flex-1 bg-gray-100 dark:bg-white/10 border border-transparent dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
                   style={{ fontSize: '16px' }}
                 />
