@@ -48,6 +48,14 @@ function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   return null
 }
 
+function MapResizer() {
+  const map = useMap()
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 100)
+  }, [map])
+  return null
+}
+
 interface LocationData {
   userId: string
   userName: string
@@ -59,11 +67,13 @@ interface LocationData {
 
 interface Props {
   roomId: string
+  visible?: boolean
 }
 
-export default function LocationMap({ roomId }: Props) {
+export default function LocationMap({ roomId, visible = true }: Props) {
   const { user } = useAuthState()
   const [sharing, setSharing] = useState(false)
+  const mapRef = useRef<L.Map | null>(null)
   const [locations, setLocations] = useState<LocationData[]>([])
   const [loading, setLoading] = useState(false)
   const [myCenter, setMyCenter] = useState<{ lat: number; lng: number } | null>(null)
@@ -137,6 +147,13 @@ export default function LocationMap({ roomId }: Props) {
     }
   }, [])
 
+  // 탭이 보이면 지도 사이즈 재계산
+  useEffect(() => {
+    if (visible && mapRef.current) {
+      setTimeout(() => mapRef.current?.invalidateSize(), 150)
+    }
+  }, [visible])
+
   const myLoc = user ? locations.find((l) => l.userId === user.uid) : null
   const center = myLoc
     ? { lat: myLoc.lat, lng: myLoc.lng }
@@ -181,11 +198,13 @@ export default function LocationMap({ roomId }: Props) {
         center={[center.lat, center.lng]}
         zoom={14}
         style={{ height: '320px', width: '100%' }}
+        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <MapResizer />
         {myLoc && <RecenterMap lat={myLoc.lat} lng={myLoc.lng} />}
         {locations.map((loc) => (
           <Marker
