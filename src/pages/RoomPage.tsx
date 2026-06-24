@@ -94,11 +94,11 @@ export default function RoomPage() {
   }
 
   const renderReplyQuote = (reply: ReplyTo, isMine: boolean) => (
-    <div className={`border-l-2 pl-2 mb-2 ${isMine ? 'border-white/50' : 'border-violet-400 dark:border-violet-500'}`}>
-      <p className={`text-[11px] font-semibold ${isMine ? 'text-white/90' : 'text-violet-500 dark:text-violet-400'}`}>
+    <div className={`rounded-lg px-2.5 py-2 mb-2 ${isMine ? 'bg-black/15' : 'bg-gray-100 dark:bg-white/10'}`}>
+      <p className={`text-[11px] font-semibold leading-tight mb-0.5 ${isMine ? 'text-white/90' : 'text-violet-500 dark:text-violet-400'}`}>
         {reply.authorName}
       </p>
-      <p className={`text-xs truncate max-w-[200px] ${isMine ? 'text-white/75' : 'text-gray-500 dark:text-gray-400'}`}>
+      <p className={`text-xs leading-snug line-clamp-2 ${isMine ? 'text-white/75' : 'text-gray-500 dark:text-gray-400'}`}>
         {reply.imageURL ? '📷 사진' : reply.text}
       </p>
     </div>
@@ -496,10 +496,10 @@ export default function RoomPage() {
                             </span>
                           )}
                           <div
-                            className={`relative cursor-pointer select-none overflow-hidden ${
-                              msg.imageURL && !msg.replyTo
-                                ? 'rounded-2xl'
-                                : `rounded-2xl text-sm ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm'} ${isMine ? 'rounded-tr-sm' : 'rounded-tl-sm'} ${msg.imageURL || msg.replyTo ? 'p-0' : 'px-4 py-2.5'}`
+                            className={`relative cursor-pointer select-none max-w-full ${
+                              msg.imageURL && !msg.replyTo && !msg.text
+                                ? 'rounded-2xl overflow-hidden'
+                                : `rounded-2xl text-sm px-3 py-2.5 ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'}`
                             }`}
                             onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
                             onTouchStart={() => {
@@ -509,17 +509,13 @@ export default function RoomPage() {
                               window.addEventListener('touchmove', cancel, { once: true })
                             }}
                           >
-                            {(msg.replyTo || !msg.imageURL) && (
-                              <div className={msg.imageURL ? 'p-3 pb-0' : ''}>
-                                {msg.replyTo && renderReplyQuote(msg.replyTo, isMine)}
-                                {!msg.imageURL && msg.text}
-                              </div>
-                            )}
+                            {msg.replyTo && renderReplyQuote(msg.replyTo, isMine)}
+                            {msg.text && <p className="break-words whitespace-pre-wrap">{msg.text}</p>}
                             {msg.imageURL && (
                               <img
                                 src={msg.imageURL}
                                 alt="사진"
-                                className={`max-w-[220px] max-h-[280px] object-cover ${msg.replyTo ? 'rounded-b-2xl' : 'rounded-2xl'}`}
+                                className={`max-w-[220px] max-h-[280px] object-cover ${msg.replyTo || msg.text ? 'mt-1 rounded-xl' : 'rounded-2xl'}`}
                               />
                             )}
                           </div>
