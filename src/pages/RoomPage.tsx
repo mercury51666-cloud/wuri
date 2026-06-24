@@ -19,6 +19,13 @@ interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
 
+interface ReplyTo {
+  id: string
+  authorName: string
+  text: string
+  imageURL?: string
+}
+
 interface Message {
   id: string
   text: string
@@ -28,6 +35,7 @@ interface Message {
   authorPhotoURL?: string
   createdAt: { seconds: number } | null
   reactions?: Reaction
+  replyTo?: ReplyTo
 }
 
 interface Room {
@@ -63,6 +71,7 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null)
   const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
@@ -72,6 +81,28 @@ export default function RoomPage() {
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
   const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
+
+  const getReplyPreview = (msg: Pick<Message, 'text' | 'imageURL'>) => {
+    if (msg.imageURL) return '📷 사진'
+    const t = msg.text.trim()
+    return t.length > 60 ? `${t.slice(0, 60)}…` : t
+  }
+
+  const startReply = (msg: Message) => {
+    setReplyTarget(msg)
+    setReactionTarget(null)
+  }
+
+  const renderReplyQuote = (reply: ReplyTo, isMine: boolean) => (
+    <div className={`border-l-2 pl-2 mb-2 ${isMine ? 'border-white/50' : 'border-violet-400 dark:border-violet-500'}`}>
+      <p className={`text-[11px] font-semibold ${isMine ? 'text-white/90' : 'text-violet-500 dark:text-violet-400'}`}>
+        {reply.authorName}
+      </p>
+      <p className={`text-xs truncate max-w-[200px] ${isMine ? 'text-white/75' : 'text-gray-500 dark:text-gray-400'}`}>
+        {reply.imageURL ? '📷 사진' : reply.text}
+      </p>
+    </div>
+  )
 
   const toggleReaction = async (msgId: string, emoji: string) => {
     if (!user || !roomId) return
@@ -180,14 +211,24 @@ export default function RoomPage() {
     setSending(true)
     const msgText = text.trim()
     try {
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
+      const payload: Record<string, unknown> = {
         text: msgText,
         authorId: user.uid,
         authorName: user.displayName || '친구',
         authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
-      })
+      }
+      if (replyTarget) {
+        payload.replyTo = {
+          id: replyTarget.id,
+          authorName: replyTarget.authorName,
+          text: replyTarget.text,
+          ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
+        }
+      }
+      await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
       setText('')
+      setReplyTarget(null)
       clearTyping()
     } finally {
       setSending(false)
@@ -205,14 +246,24 @@ export default function RoomPage() {
         method: 'POST', body: formData,
       })
       const data = await res.json()
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
+      const payload: Record<string, unknown> = {
         text: '',
         imageURL: data.secure_url,
         authorId: user.uid,
         authorName: user.displayName || '친구',
         authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
-      })
+      }
+      if (replyTarget) {
+        payload.replyTo = {
+          id: replyTarget.id,
+          authorName: replyTarget.authorName,
+          text: replyTarget.text,
+          ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
+        }
+      }
+      await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
+      setReplyTarget(null)
     } finally {
       setSending(false)
     }
@@ -446,9 +497,9 @@ export default function RoomPage() {
                           )}
                           <div
                             className={`relative cursor-pointer select-none overflow-hidden ${
-                              msg.imageURL
+                              msg.imageURL && !msg.replyTo
                                 ? 'rounded-2xl'
-                                : `px-4 py-2.5 rounded-2xl text-sm ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'}`
+                                : `rounded-2xl text-sm ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm'} ${isMine ? 'rounded-tr-sm' : 'rounded-tl-sm'} ${msg.imageURL || msg.replyTo ? 'p-0' : 'px-4 py-2.5'}`
                             }`}
                             onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
                             onTouchStart={() => {
@@ -458,21 +509,38 @@ export default function RoomPage() {
                               window.addEventListener('touchmove', cancel, { once: true })
                             }}
                           >
-                            {msg.imageURL
-                              ? <img src={msg.imageURL} alt="사진" className="max-w-[220px] max-h-[280px] object-cover rounded-2xl" />
-                              : msg.text
-                            }
+                            {(msg.replyTo || !msg.imageURL) && (
+                              <div className={msg.imageURL ? 'p-3 pb-0' : ''}>
+                                {msg.replyTo && renderReplyQuote(msg.replyTo, isMine)}
+                                {!msg.imageURL && msg.text}
+                              </div>
+                            )}
+                            {msg.imageURL && (
+                              <img
+                                src={msg.imageURL}
+                                alt="사진"
+                                className={`max-w-[220px] max-h-[280px] object-cover ${msg.replyTo ? 'rounded-b-2xl' : 'rounded-2xl'}`}
+                              />
+                            )}
                           </div>
                         </div>
 
                         {/* 리액션 팝업 */}
                         {reactionTarget === msg.id && (
-                          <div className={`flex gap-1 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-2xl px-2 py-1.5 shadow-xl ${isMine ? 'mr-1' : 'ml-1'}`}>
-                            {REACTION_EMOJIS.map((emoji) => (
-                              <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
-                                className="text-xl w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 active:scale-90 transition-all"
-                              >{emoji}</button>
-                            ))}
+                          <div className={`flex flex-col gap-1.5 ${isMine ? 'items-end mr-1' : 'items-start ml-1'}`}>
+                            <button
+                              onClick={() => startReply(msg)}
+                              className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-xl active:scale-95 transition-all"
+                            >
+                              ↩ 답장
+                            </button>
+                            <div className="flex gap-1 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-2xl px-2 py-1.5 shadow-xl">
+                              {REACTION_EMOJIS.map((emoji) => (
+                                <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
+                                  className="text-xl w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 active:scale-90 transition-all"
+                                >{emoji}</button>
+                              ))}
+                            </div>
                           </div>
                         )}
 
@@ -515,6 +583,25 @@ export default function RoomPage() {
                   {typingUsers.length === 1
                     ? `${typingUsers[0].userName}님이 입력 중...`
                     : `${typingUsers.map((t) => t.userName).join(', ')}님이 입력 중...`}
+                </div>
+              )}
+              {replyTarget && (
+                <div className="px-4 pt-3 flex items-start gap-2 border-b border-gray-100 dark:border-white/10">
+                  <div className="flex-1 min-w-0 border-l-2 border-violet-400 pl-2">
+                    <p className="text-[11px] font-semibold text-violet-500 dark:text-violet-400">
+                      {replyTarget.authorName}에게 답장
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {getReplyPreview(replyTarget)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyTarget(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg px-1 active:scale-90 transition-all"
+                  >
+                    ✕
+                  </button>
                 </div>
               )}
               <form onSubmit={sendMessage} className="flex items-center gap-2 px-4 py-3">
