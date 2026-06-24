@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, collection, query, orderBy,
@@ -72,11 +72,16 @@ export default function RoomPage() {
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const [replyTarget, setReplyTarget] = useState<Message | null>(null)
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchIdx, setSearchIdx] = useState(0)
+  const [highlightId, setHighlightId] = useState<string | null>(null)
   const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
   const [, setTypingTick] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
@@ -91,6 +96,57 @@ export default function RoomPage() {
   const startReply = (msg: Message) => {
     setReplyTarget(msg)
     setReactionTarget(null)
+  }
+
+  const deleteMessage = async (msg: Message) => {
+    if (!user || !roomId || msg.authorId !== user.uid) return
+    if (!confirm('메시지를 삭제할까요?')) return
+    await deleteDoc(doc(db, 'rooms', roomId, 'messages', msg.id))
+    setReactionTarget(null)
+  }
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return []
+    return messages.filter(
+      (m) => m.text.toLowerCase().includes(q) || m.authorName.toLowerCase().includes(q),
+    )
+  }, [messages, searchQuery])
+
+  useEffect(() => {
+    setSearchIdx(0)
+  }, [searchQuery])
+
+  useEffect(() => {
+    if (!showSearch || searchResults.length === 0) return
+    const target = searchResults[searchIdx]
+    if (!target) return
+    setHighlightId(target.id)
+    messageRefs.current.get(target.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const t = setTimeout(() => setHighlightId(null), 1800)
+    return () => clearTimeout(t)
+  }, [searchIdx, searchResults, showSearch])
+
+  const closeSearch = () => {
+    setShowSearch(false)
+    setSearchQuery('')
+    setSearchIdx(0)
+    setHighlightId(null)
+  }
+
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) return text
+    const lower = text.toLowerCase()
+    const q = query.trim().toLowerCase()
+    const idx = lower.indexOf(q)
+    if (idx === -1) return text
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-amber-200 dark:bg-amber-500/40 text-inherit rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
+        {text.slice(idx + q.length)}
+      </>
+    )
   }
 
   const renderReplyQuote = (reply: ReplyTo, isMine: boolean) => (
@@ -416,20 +472,70 @@ export default function RoomPage() {
 
       {/* 헤더 */}
       <header className="safe-top bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
-        <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setShowMenu(true)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors shrink-0">
-            <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
-            <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
-            <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-800 dark:text-white truncate">
-              {TABS.find(t => t.id === activeTab)?.emoji} {TABS.find(t => t.id === activeTab)?.label}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">{room.name}</p>
+        {showSearch && activeTab === 'chat' ? (
+          <div className="px-3 py-2.5 flex items-center gap-2">
+            <input
+              autoFocus
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="메시지 검색..."
+              className="flex-1 min-w-0 bg-gray-100 dark:bg-white/10 rounded-xl px-3 py-2 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400"
+              style={{ fontSize: '16px' }}
+            />
+            {searchResults.length > 0 && (
+              <span className="text-[11px] text-gray-400 shrink-0 tabular-nums">
+                {searchIdx + 1}/{searchResults.length}
+              </span>
+            )}
+            <button
+              type="button"
+              disabled={searchResults.length === 0}
+              onClick={() => setSearchIdx((i) => (i - 1 + searchResults.length) % searchResults.length)}
+              className="w-8 h-8 rounded-lg text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-30"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={searchResults.length === 0}
+              onClick={() => setSearchIdx((i) => (i + 1) % searchResults.length)}
+              className="w-8 h-8 rounded-lg text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-30"
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              onClick={closeSearch}
+              className="text-sm text-violet-500 dark:text-violet-400 font-medium px-2 shrink-0"
+            >
+              취소
+            </button>
           </div>
-          <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">홈</button>
-        </div>
+        ) : (
+          <div className="px-4 py-3 flex items-center gap-3">
+            <button onClick={() => setShowMenu(true)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors shrink-0">
+              <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+              <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+              <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-800 dark:text-white truncate">
+                {TABS.find(t => t.id === activeTab)?.emoji} {TABS.find(t => t.id === activeTab)?.label}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">{room.name}</p>
+            </div>
+            {activeTab === 'chat' && (
+              <button
+                onClick={() => setShowSearch(true)}
+                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-lg px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+              >
+                🔍
+              </button>
+            )}
+            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">홈</button>
+          </div>
+        )}
       </header>
 
       {!isJoined && (
@@ -450,6 +556,11 @@ export default function RoomPage() {
                   <p className="text-xs text-gray-400 dark:text-gray-600 text-center">첫 메시지로 대화를 시작해보세요!</p>
                 </div>
               )}
+              {showSearch && searchQuery.trim() && searchResults.length === 0 && messages.length > 0 && (
+                <div className="text-center py-10 text-sm text-gray-400 dark:text-gray-500">
+                  &quot;{searchQuery}&quot; 검색 결과가 없어요
+                </div>
+              )}
               {messages.map((msg, idx) => {
                 const isMine = msg.authorId === user?.uid
                 const unreadByOthers = isMine && room
@@ -462,7 +573,14 @@ export default function RoomPage() {
                   new Date(prevMsg.createdAt.seconds * 1000).toDateString()
                 )
                 return (
-                  <div key={msg.id}>
+                  <div
+                    key={msg.id}
+                    ref={(el) => {
+                      if (el) messageRefs.current.set(msg.id, el)
+                      else messageRefs.current.delete(msg.id)
+                    }}
+                    className={`transition-all duration-300 ${highlightId === msg.id ? 'ring-2 ring-amber-400 dark:ring-amber-500 rounded-2xl' : ''}`}
+                  >
                     {showDateLabel && msg.createdAt && (
                       <div className="flex items-center gap-3 my-4">
                         <div className="flex-1 h-px bg-gray-100 dark:bg-white/10" />
@@ -510,7 +628,13 @@ export default function RoomPage() {
                             }}
                           >
                             {msg.replyTo && renderReplyQuote(msg.replyTo, isMine)}
-                            {msg.text && <p className="break-words whitespace-pre-wrap">{msg.text}</p>}
+                            {msg.text && (
+                              <p className="break-words whitespace-pre-wrap">
+                                {showSearch && searchQuery.trim()
+                                  ? highlightText(msg.text, searchQuery)
+                                  : msg.text}
+                              </p>
+                            )}
                             {msg.imageURL && (
                               <img
                                 src={msg.imageURL}
@@ -524,12 +648,22 @@ export default function RoomPage() {
                         {/* 리액션 팝업 */}
                         {reactionTarget === msg.id && (
                           <div className={`flex flex-col gap-1.5 ${isMine ? 'items-end mr-1' : 'items-start ml-1'}`}>
-                            <button
-                              onClick={() => startReply(msg)}
-                              className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-xl active:scale-95 transition-all"
-                            >
-                              ↩ 답장
-                            </button>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => startReply(msg)}
+                                className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-xl active:scale-95 transition-all"
+                              >
+                                ↩ 답장
+                              </button>
+                              {isMine && (
+                                <button
+                                  onClick={() => deleteMessage(msg)}
+                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-red-100 dark:border-red-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-red-500 dark:text-red-400 shadow-xl active:scale-95 transition-all"
+                                >
+                                  🗑️ 삭제
+                                </button>
+                              )}
+                            </div>
                             <div className="flex gap-1 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-2xl px-2 py-1.5 shadow-xl">
                               {REACTION_EMOJIS.map((emoji) => (
                                 <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
