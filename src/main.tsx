@@ -3,18 +3,21 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 
-// 깨진 서비스 워커 자동 복구: 모두 해제하고 페이지 새로고침
+// 오래된 서비스 워커 및 캐시 강제 초기화
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    if (regs.length === 0) return
-    const promises = regs.map((reg) => reg.unregister())
-    Promise.all(promises).then(() => {
-      // 캐시도 전부 삭제
-      if ('caches' in window) {
-        caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-      }
+  const SW_VERSION = '2'
+  const stored = localStorage.getItem('sw_version')
+  if (stored !== SW_VERSION) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      Promise.all(regs.map((r) => r.unregister())).then(() => {
+        if ('caches' in window) {
+          caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        }
+        localStorage.setItem('sw_version', SW_VERSION)
+        window.location.reload()
+      })
     })
-  })
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

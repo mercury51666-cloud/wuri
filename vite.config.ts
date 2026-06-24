@@ -13,6 +13,7 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
         name: 'WURI — 우리만의 공간',
