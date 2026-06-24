@@ -69,6 +69,9 @@ export default function RoomPage() {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
+  const [showRename, setShowRename] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [renaming, setRenaming] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -371,6 +374,24 @@ export default function RoomPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const openRename = () => {
+    setRenameValue(room?.name ?? '')
+    setShowRename(true)
+    setShowMenu(false)
+  }
+
+  const renameRoom = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!roomId || !renameValue.trim()) return
+    setRenaming(true)
+    try {
+      await updateDoc(doc(db, 'rooms', roomId), { name: renameValue.trim() })
+      setShowRename(false)
+    } finally {
+      setRenaming(false)
+    }
+  }
+
   const formatTime = (ts: { seconds: number } | null) => {
     if (!ts) return ''
     return new Date(ts.seconds * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
@@ -502,6 +523,11 @@ export default function RoomPage() {
               </div>
             </div>
             <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-white/10">
+              {isJoined && (
+                <button onClick={openRename} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                  <span>✏️</span><span>방 이름 변경</span>
+                </button>
+              )}
               <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                 <span>🔗</span><span>친구 초대</span>
               </button>
@@ -847,6 +873,31 @@ export default function RoomPage() {
         {roomId && <div className={`flex-1 overflow-y-auto p-4 ${activeTab !== 'location' ? 'hidden' : ''}`}><LocationMap roomId={roomId} visible={activeTab === 'location'} /></div>}
         {activeTab === 'stats' && roomId && <div className="flex-1 overflow-y-auto p-4"><RoomStats roomId={roomId} /></div>}
       </div>
+
+      {showRename && (
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">방 이름 변경</h3>
+            <form onSubmit={renameRoom} className="space-y-4">
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="새 방 이름"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                style={{ fontSize: '16px' }}
+                autoFocus
+                required
+                maxLength={30}
+              />
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowRename(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
+                <button type="submit" disabled={renaming || !renameValue.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{renaming ? '저장 중...' : '저장'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showLeave && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
