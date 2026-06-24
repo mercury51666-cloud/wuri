@@ -65,6 +65,8 @@ export default function RoomPage() {
   const navigate = useNavigate()
 
   const [room, setRoom] = useState<Room | null>(null)
+  const [roomError, setRoomError] = useState('')
+  const [joining, setJoining] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -208,11 +210,40 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!roomId) return
-    return onSnapshot(doc(db, 'rooms', roomId), (snap) => {
-      if (!snap.exists()) { navigate('/'); return }
-      setRoom(snap.data() as Room)
-    })
-  }, [roomId, navigate])
+    return onSnapshot(
+      doc(db, 'rooms', roomId),
+      (snap) => {
+        if (!snap.exists()) {
+          setRoom(null)
+          setRoomError('방을 찾을 수 없어요')
+          return
+        }
+        setRoom(snap.data() as Room)
+        setRoomError('')
+      },
+      () => setRoomError('방 정보를 불러올 수 없어요'),
+    )
+  }, [roomId])
+
+  const autoJoinAttempted = useRef(false)
+
+  useEffect(() => {
+    autoJoinAttempted.current = false
+  }, [roomId])
+
+  // 초대 링크로 들어온 경우 자동 참여
+  useEffect(() => {
+    if (!user || !roomId || !room || autoJoinAttempted.current) return
+    if (room.memberIds.includes(user.uid)) return
+    autoJoinAttempted.current = true
+    setJoining(true)
+    updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayUnion(user.uid) })
+      .catch(() => {
+        autoJoinAttempted.current = false
+        setRoomError('방 참여에 실패했어요. 아래 버튼을 눌러 다시 시도해주세요.')
+      })
+      .finally(() => setJoining(false))
+  }, [user, roomId, room])
 
   useEffect(() => {
     if (!roomId) return
@@ -407,6 +438,15 @@ export default function RoomPage() {
     if (d.toDateString() === yesterday.toDateString()) return '어제'
     return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   }
+
+  if (roomError && !room) return (
+    <div className="h-full bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto items-center justify-center px-6 text-center">
+      <div className="text-4xl mb-4">🚪</div>
+      <p className="font-bold text-gray-800 dark:text-white mb-2">{roomError}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">링크가 올바른지 확인하거나<br />방장에게 다시 초대를 요청해주세요.</p>
+      <button onClick={() => navigate('/')} className="px-6 py-3 rounded-xl bg-violet-500 text-white font-bold">홈으로</button>
+    </div>
+  )
 
   if (!room) return (
     <div className="h-full bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto animate-pulse overflow-hidden">
@@ -627,8 +667,12 @@ export default function RoomPage() {
 
       {!isJoined && (
         <div className="bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/20 px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-amber-700 dark:text-amber-400">아직 이 방의 멤버가 아니에요</p>
-          <button onClick={joinRoom} className="text-sm bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-amber-600 dark:hover:bg-amber-400 transition-colors">참여하기</button>
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            {joining ? '방에 참여하는 중...' : '아직 이 방의 멤버가 아니에요'}
+          </p>
+          {!joining && (
+            <button onClick={joinRoom} className="text-sm bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-amber-600 dark:hover:bg-amber-400 transition-colors">참여하기</button>
+          )}
         </div>
       )}
 

@@ -10,6 +10,9 @@ import RoomPage from './pages/RoomPage'
 function RequireAuth({ user, children }: { user: User | null; children: ReactNode }) {
   const location = useLocation()
   if (!user) {
+    if (location.pathname.startsWith('/room/')) {
+      sessionStorage.setItem('wuri_invite', location.pathname)
+    }
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
   return <>{children}</>
@@ -19,7 +22,9 @@ function RequireAuth({ user, children }: { user: User | null; children: ReactNod
 function LoginRoute({ user }: { user: User | null }) {
   const location = useLocation()
   if (user) {
-    const from = (location.state as { from?: string })?.from ?? '/'
+    const stored = sessionStorage.getItem('wuri_invite')
+    const from = (location.state as { from?: string })?.from ?? stored ?? '/'
+    if (stored) sessionStorage.removeItem('wuri_invite')
     return <Navigate to={from} replace />
   }
   return <LoginPage />
