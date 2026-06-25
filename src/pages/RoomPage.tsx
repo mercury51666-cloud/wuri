@@ -18,6 +18,7 @@ import PhotoGallery from '../components/PhotoGallery'
 import RoomAvatar from '../components/RoomAvatar'
 import { useUserProfiles } from '../hooks/useUserProfiles'
 import { uploadToCloudinary } from '../utils/cloudinary'
+import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
@@ -45,6 +46,7 @@ interface Room {
   name: string
   emoji?: string
   photoURL?: string
+  joinCode?: string
   memberIds: string[]
   pinnedMessageId?: string | null
 }
@@ -70,6 +72,8 @@ export default function RoomPage() {
   const [room, setRoom] = useState<Room | null>(null)
   const [roomError, setRoomError] = useState('')
   const [joining, setJoining] = useState(false)
+  const [joinPassword, setJoinPassword] = useState('')
+  const [joinPasswordError, setJoinPasswordError] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -81,6 +85,7 @@ export default function RoomPage() {
   const [showLeave, setShowLeave] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('chat')
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const [replyTarget, setReplyTarget] = useState<Message | null>(null)
@@ -230,30 +235,13 @@ export default function RoomPage() {
     )
   }, [roomId])
 
-  const autoJoinAttempted = useRef(false)
-  const skipAutoJoinRef = useRef(false)
-
+  // 기존 방에 비밀번호 없으면 멤버가 열 때 자동 생성
   useEffect(() => {
-    autoJoinAttempted.current = false
-    skipAutoJoinRef.current = false
-  }, [roomId])
-
-  // 초대 링크로 들어온 경우 자동 참여
-  useEffect(() => {
-    if (!user || !roomId || !room || autoJoinAttempted.current || skipAutoJoinRef.current) return
-    if (room.memberIds.includes(user.uid)) {
-      autoJoinAttempted.current = true
-      return
-    }
-    autoJoinAttempted.current = true
-    setJoining(true)
-    updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayUnion(user.uid) })
-      .catch(() => {
-        autoJoinAttempted.current = false
-        setRoomError('방 참여에 실패했어요. 아래 버튼을 눌러 다시 시도해주세요.')
-      })
-      .finally(() => setJoining(false))
-  }, [user, roomId, room])
+    if (!user || !roomId || !room || room.joinCode) return
+    if (!room.memberIds.includes(user.uid)) return
+    const code = generateJoinCode()
+    updateDoc(doc(db, 'rooms', roomId), { joinCode: code }).catch(() => {})
+  }, [user, roomId, room?.joinCode, room?.memberIds])
 
   useEffect(() => {
     if (!roomId) return
@@ -407,20 +395,41 @@ export default function RoomPage() {
     }
   }
 
-  const joinRoom = async () => {
-    if (!user || !roomId) return
-    await updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayUnion(user.uid) })
+  const joinRoom = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!user || !roomId || !room) return
+    if (!room.joinCode) {
+      setJoinPasswordError('비밀번호를 준비 중이에요. 잠시 후 다시 시도해주세요.')
+      return
+    }
+    const code = normalizeJoinCode(joinPassword)
+    if (!isValidJoinCodeFormat(code)) {
+      setJoinPasswordError('영문과 숫자를 섞어 4~12자로 입력해주세요.')
+      return
+    }
+    if (room.joinCode !== code) {
+      setJoinPasswordError('비밀번호가 틀렸어요.')
+      return
+    }
+    setJoining(true)
+    setJoinPasswordError('')
+    try {
+      await updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayUnion(user.uid) })
+      setJoinPassword('')
+    } catch {
+      setJoinPasswordError('참여에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setJoining(false)
+    }
   }
 
   const leaveRoom = async () => {
     if (!user || !roomId) return
-    skipAutoJoinRef.current = true
     setShowLeave(false)
     try {
       await updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayRemove(user.uid) })
       navigate('/')
     } catch {
-      skipAutoJoinRef.current = false
       alert('방 나가기에 실패했어요. 다시 시도해주세요.')
     }
   }
@@ -429,6 +438,13 @@ export default function RoomPage() {
     navigator.clipboard.writeText(window.location.href)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const copyJoinCode = () => {
+    if (!room?.joinCode) return
+    navigator.clipboard.writeText(room.joinCode)
+    setCopiedCode(true)
+    setTimeout(() => setCopiedCode(false), 2000)
   }
 
   const openRename = () => {
@@ -551,6 +567,9 @@ export default function RoomPage() {
               <div>
                 <p className="font-bold text-gray-800 dark:text-white text-sm">{room.name}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">멤버 {room.memberIds.length}명</p>
+                {room.joinCode && (
+                  <p className="text-xs text-violet-500 dark:text-violet-400 font-mono tracking-wider mt-0.5">🔑 {room.joinCode}</p>
+                )}
               </div>
             </div>
 
@@ -698,17 +717,38 @@ export default function RoomPage() {
         )}
       </header>
 
-      {!isJoined && (
-        <div className="bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/20 px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            {joining ? '방에 참여하는 중...' : '아직 이 방의 멤버가 아니에요'}
+      {!isJoined ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
+          <RoomAvatar photoURL={room.photoURL} emoji={room.emoji} name={room.name} className="w-20 h-20 mb-4" />
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-1">{room.name}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">방 비밀번호를 입력하고 참여하세요</p>
+          <form onSubmit={joinRoom} className="w-full max-w-xs space-y-3">
+            <input
+              type="text"
+              value={joinPassword}
+              onChange={(e) => { setJoinPassword(e.target.value.toUpperCase()); setJoinPasswordError('') }}
+              placeholder="예: K3M8P2"
+              maxLength={12}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400 uppercase tracking-[0.2em] text-center font-bold"
+              style={{ fontSize: '16px' }}
+              autoFocus
+            />
+            {joinPasswordError && (
+              <p className="text-sm text-rose-500">{joinPasswordError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={joining || !joinPassword.trim()}
+              className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white font-bold transition-colors"
+            >
+              {joining ? '참여 중...' : '참여하기'}
+            </button>
+          </form>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-6 leading-relaxed">
+            비밀번호는 방장에게 물어보세요.<br />홈에서 🔑 비밀번호로 참여도 가능해요.
           </p>
-          {!joining && (
-            <button onClick={joinRoom} className="text-sm bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-amber-600 dark:hover:bg-amber-400 transition-colors">참여하기</button>
-          )}
         </div>
-      )}
-
+      ) : (
       <div className="flex-1 overflow-hidden flex flex-col">
         {activeTab === 'chat' && (
           <>
@@ -962,6 +1002,7 @@ export default function RoomPage() {
         {roomId && <div className={`flex-1 overflow-y-auto p-4 ${activeTab !== 'location' ? 'hidden' : ''}`}><LocationMap roomId={roomId} visible={activeTab === 'location'} /></div>}
         {activeTab === 'stats' && roomId && <div className="flex-1 overflow-y-auto p-4"><RoomStats roomId={roomId} /></div>}
       </div>
+      )}
 
       {showRename && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -1007,11 +1048,27 @@ export default function RoomPage() {
           <div className="bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 text-center">
             <div className="text-4xl mb-3">🔗</div>
             <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">친구 초대하기</h3>
-            <p className="text-sm text-gray-500 mb-5">아래 링크를 친구에게 공유하면<br />이 방에 참여할 수 있어요</p>
+            <p className="text-sm text-gray-500 mb-4">링크 또는 비밀번호를 공유하면<br />이 방에 참여할 수 있어요</p>
+            {room.joinCode && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 mb-2 tracking-widest uppercase">방 비밀번호</p>
+                <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 rounded-xl px-4 py-3 text-xl font-black text-violet-600 dark:text-violet-400 tracking-[0.25em] mb-2">
+                  {room.joinCode}
+                </div>
+                <button
+                  type="button"
+                  onClick={copyJoinCode}
+                  className="text-sm text-violet-500 dark:text-violet-400 font-semibold hover:underline"
+                >
+                  {copiedCode ? '비밀번호 복사됨 ✓' : '비밀번호 복사'}
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mb-2 tracking-widest uppercase">초대 링크</p>
             <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs text-gray-600 dark:text-gray-400 break-all mb-4">{window.location.href}</div>
             <div className="flex gap-3">
               <button onClick={() => setShowInvite(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">닫기</button>
-              <button onClick={copyInviteLink} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 text-white font-bold transition-colors">{copied ? '복사됨 ✓' : '링크 복사'}</button>
+              <button onClick={copyInviteLink} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 text-white font-bold transition-colors">{copied ? '링크 복사됨 ✓' : '링크 복사'}</button>
             </div>
           </div>
         </div>

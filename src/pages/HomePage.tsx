@@ -9,6 +9,9 @@ import {
   onSnapshot,
   addDoc,
   doc,
+  getDocs,
+  updateDoc,
+  arrayUnion,
   serverTimestamp,
 } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
@@ -21,6 +24,7 @@ import OnboardingModal from '../components/OnboardingModal'
 import InstallBanner from '../components/InstallBanner'
 import RoomAvatar from '../components/RoomAvatar'
 import { uploadToCloudinary } from '../utils/cloudinary'
+import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 
 interface Room {
   id: string
@@ -43,6 +47,11 @@ export default function HomePage() {
   const [roomPhotoFile, setRoomPhotoFile] = useState<File | null>(null)
   const [roomPhotoPreview, setRoomPhotoPreview] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [showJoinByCode, setShowJoinByCode] = useState(false)
+  const [joinCodeInput, setJoinCodeInput] = useState('')
+  const [joinCodeError, setJoinCodeError] = useState('')
+  const [joiningByCode, setJoiningByCode] = useState(false)
+  const [roomJoinCode, setRoomJoinCode] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem('wuri_onboarded')
@@ -54,6 +63,12 @@ export default function HomePage() {
     setRoomName('')
     setRoomPhotoFile(null)
     setRoomPhotoPreview(null)
+    setRoomJoinCode('')
+  }
+
+  const resetJoinForm = () => {
+    setJoinCodeInput('')
+    setJoinCodeError('')
   }
 
   const handlePhotoSelect = (file: File | null) => {
@@ -123,6 +138,13 @@ export default function HomePage() {
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !roomName.trim()) return
+    const joinCode = roomJoinCode.trim()
+      ? normalizeJoinCode(roomJoinCode)
+      : generateJoinCode()
+    if (roomJoinCode.trim() && !isValidJoinCodeFormat(joinCode)) {
+      alert('비밀번호는 영문과 숫자를 섞어 4~12자로 입력해주세요.')
+      return
+    }
     setCreating(true)
     try {
       let photoURL: string | undefined
@@ -131,6 +153,7 @@ export default function HomePage() {
       }
       const docRef = await addDoc(collection(db, 'rooms'), {
         name: roomName.trim(),
+        joinCode,
         ...(photoURL ? { photoURL } : {}),
         memberIds: [user.uid],
         memberCount: 1,
@@ -144,6 +167,38 @@ export default function HomePage() {
       alert('방 만들기에 실패했어요. 다시 시도해주세요.')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleJoinByCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+    const code = normalizeJoinCode(joinCodeInput)
+    if (!isValidJoinCodeFormat(code)) {
+      setJoinCodeError('영문과 숫자를 섞어 4~12자로 입력해주세요.')
+      return
+    }
+    setJoiningByCode(true)
+    setJoinCodeError('')
+    try {
+      const q = query(collection(db, 'rooms'), where('joinCode', '==', code))
+      const snap = await getDocs(q)
+      if (snap.empty) {
+        setJoinCodeError('해당 비밀번호의 방을 찾을 수 없어요.')
+        return
+      }
+      const roomDoc = snap.docs[0]
+      const data = roomDoc.data()
+      if (!data.memberIds?.includes(user.uid)) {
+        await updateDoc(roomDoc.ref, { memberIds: arrayUnion(user.uid) })
+      }
+      setShowJoinByCode(false)
+      resetJoinForm()
+      navigate(`/room/${roomDoc.id}`)
+    } catch {
+      setJoinCodeError('참여에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setJoiningByCode(false)
     }
   }
 
@@ -195,6 +250,14 @@ export default function HomePage() {
           <span>새 방 만들기</span>
         </button>
 
+        <button
+          onClick={() => { resetJoinForm(); setShowJoinByCode(true) }}
+          className="w-full bg-white dark:bg-white/5 border border-violet-200 dark:border-white/10 hover:bg-violet-50 dark:hover:bg-white/10 active:scale-[0.98] text-violet-600 dark:text-violet-400 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all"
+        >
+          <span className="text-xl">🔑</span>
+          <span>비밀번호로 참여</span>
+        </button>
+
         {loadingRooms ? (
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
@@ -212,7 +275,7 @@ export default function HomePage() {
             <div className="w-20 h-20 rounded-3xl bg-violet-100 dark:bg-violet-500/10 flex items-center justify-center text-4xl mb-1">🏡</div>
             <p className="font-bold text-gray-600 dark:text-gray-300 text-lg">아직 방이 없어요</p>
             <p className="text-sm text-gray-400 dark:text-gray-600 leading-relaxed">
-              새 방을 만들거나<br/>초대 링크로 친구 방에 참여해보세요
+              새 방을 만들거나<br/>비밀번호·초대 링크로 친구 방에 참여해보세요
             </p>
             <button
               onClick={() => setShowCreate(true)}
@@ -308,9 +371,51 @@ export default function HomePage() {
                   autoFocus
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1 tracking-widest uppercase">방 비밀번호</label>
+                <input
+                  type="text"
+                  value={roomJoinCode}
+                  onChange={(e) => setRoomJoinCode(e.target.value.toUpperCase())}
+                  placeholder="비워두면 자동 생성 (예: K3M8P2)"
+                  maxLength={12}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500 uppercase tracking-widest"
+                  style={{ fontSize: '16px' }}
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">영문+숫자 4~12자. 친구에게 이 비밀번호를 알려주면 참여할 수 있어요.</p>
+              </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => { setShowCreate(false); resetCreateForm() }} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
                 <button type="submit" disabled={creating || !roomName.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{creating ? '만드는 중...' : '만들기'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showJoinByCode && (
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#1a1a1a] border border-violet-100 dark:border-white/10 rounded-3xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">비밀번호로 참여</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">방장에게 받은 비밀번호를 입력하세요.</p>
+            <form onSubmit={handleJoinByCode} className="space-y-4">
+              <input
+                type="text"
+                value={joinCodeInput}
+                onChange={(e) => { setJoinCodeInput(e.target.value.toUpperCase()); setJoinCodeError('') }}
+                placeholder="예: K3M8P2"
+                maxLength={12}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500 uppercase tracking-[0.2em] text-center font-bold"
+                style={{ fontSize: '16px' }}
+                autoFocus
+                required
+              />
+              {joinCodeError && (
+                <p className="text-sm text-rose-500 text-center">{joinCodeError}</p>
+              )}
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setShowJoinByCode(false); resetJoinForm() }} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
+                <button type="submit" disabled={joiningByCode || !joinCodeInput.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{joiningByCode ? '참여 중...' : '참여하기'}</button>
               </div>
             </form>
           </div>
