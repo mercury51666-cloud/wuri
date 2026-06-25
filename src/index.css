@@ -237,6 +237,63 @@ html, body {
   background: var(--surface-3);
 }
 
+/* ── 계급 뱃지 ── */
+.rank-badge {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.rank-badge-2 { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.rank-badge-3 { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.rank-badge-4 { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.rank-badge-5 { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-color: #fbbf24; }
+.rank-badge-6 { background: linear-gradient(135deg, #ede9fe, #fef3c7); color: #6d28d9; border-color: #a78bfa; }
+.dark .rank-badge-2 { background: rgba(251, 146, 60, 0.15); color: #fb923c; border-color: rgba(251, 146, 60, 0.3); }
+.dark .rank-badge-3 { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border-color: rgba(148, 163, 184, 0.3); }
+.dark .rank-badge-4 { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+.dark .rank-badge-5 { background: rgba(251, 191, 36, 0.2); color: #fcd34d; border-color: rgba(251, 191, 36, 0.4); }
+.dark .rank-badge-6 { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border-color: rgba(167, 139, 250, 0.4); }
+
+/* ── 계급 프로필 테두리 ── */
+.rank-avatar { transition: box-shadow 0.2s; }
+.rank-avatar-2 { box-shadow: 0 0 0 2px #fb923c; }
+.rank-avatar-3 { box-shadow: 0 0 0 2px #94a3b8; }
+.rank-avatar-4 { box-shadow: 0 0 0 2px #fbbf24; }
+.rank-avatar-5 { box-shadow: 0 0 0 2px #f59e0b, 0 0 8px rgba(245, 158, 11, 0.35); }
+.rank-avatar-6 { box-shadow: 0 0 0 2px #a78bfa, 0 0 10px rgba(167, 139, 250, 0.45); }
+
+/* ── 계급 말풍선 ── */
+.chat-bubble-other-copper { border-color: #fdba74; }
+.chat-bubble-other-silver { border-color: #94a3b8; box-shadow: 0 1px 6px rgba(148, 163, 184, 0.15); }
+.chat-bubble-other-gold { border-color: #fbbf24; box-shadow: 0 1px 8px rgba(251, 191, 36, 0.2); }
+.chat-bubble-other-elite { border-color: #f59e0b; box-shadow: 0 2px 10px rgba(245, 158, 11, 0.25); }
+.chat-bubble-other-officer {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, #a78bfa, #fbbf24) border-box;
+  box-shadow: 0 2px 12px rgba(167, 139, 250, 0.2);
+}
+.dark .chat-bubble-other-officer {
+  background:
+    linear-gradient(var(--surface-3), var(--surface-3)) padding-box,
+    linear-gradient(135deg, #8b5cf6, #fbbf24) border-box;
+}
+
+.chat-bubble-mine-silver { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35); }
+.chat-bubble-mine-gold { box-shadow: inset 0 0 0 1.5px #fde68a, 0 2px 8px rgba(251, 191, 36, 0.3); }
+.chat-bubble-mine-elite { box-shadow: inset 0 0 0 2px #fcd34d, 0 2px 12px rgba(251, 191, 36, 0.35); }
+.chat-bubble-mine-officer {
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #b45309 100%);
+  box-shadow: 0 2px 14px rgba(124, 58, 237, 0.4);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 .skeleton {
   background: linear-gradient(90deg, var(--surface-3) 25%, color-mix(in srgb, var(--surface-3) 60%, white) 50%, var(--surface-3) 75%);
   background-size: 200% 100%;

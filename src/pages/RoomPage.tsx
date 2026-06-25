@@ -22,6 +22,9 @@ import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 import { awardMessagePoints } from '../utils/roomPoints'
 import type { RoomRankData } from '../utils/roomPoints'
+import { getAvailableReactions, getRankAvatarClass, getRankBubbleClass, getRankPerks } from '../utils/rankSystem'
+import RankBadge from '../components/RankBadge'
+import ChatMemberRanks from '../components/ChatMemberRanks'
 import RoomBottomNav, { TAB_TITLES, MORE_SUB_TABS, type RoomTab, type PrimaryTab, type MoreSubTab } from '../components/RoomBottomNav'
 import RoomMorePanel from '../components/RoomMorePanel'
 import { ChevronLeft, Search } from 'lucide-react'
@@ -86,7 +89,7 @@ export default function RoomPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchIdx, setSearchIdx] = useState(0)
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string } | null>(null)
+  const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string; userId?: string } | null>(null)
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
@@ -98,7 +101,18 @@ export default function RoomPage() {
   const roomPhotoInputRef = useRef<HTMLInputElement>(null)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
-  const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
+  const REACTION_EMOJIS = useMemo(
+    () => getAvailableReactions(memberRanks[user?.uid ?? '']?.points ?? 0),
+    [memberRanks, user?.uid],
+  )
+  const myRankPerks = useMemo(
+    () => getRankPerks(memberRanks[user?.uid ?? '']?.points ?? 0),
+    [memberRanks, user?.uid],
+  )
+
+  const openProfile = (name: string, photoURL?: string, userId?: string) => {
+    setViewingProfile({ name, photoURL, userId })
+  }
 
   const getReplyPreview = (msg: Pick<Message, 'text' | 'imageURL'>) => {
     if (msg.imageURL) return '📷 사진'
@@ -122,7 +136,7 @@ export default function RoomPage() {
   }
 
   const pinMessage = async (msg: Message) => {
-    if (!roomId) return
+    if (!roomId || !myRankPerks.canPinNotice) return
     await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: msg.id })
     setReactionTarget(null)
   }
@@ -559,6 +573,21 @@ export default function RoomPage() {
               }
             </div>
             <p className="text-white text-xl font-bold">{viewingProfile.name}</p>
+            {viewingProfile.userId && (
+              <div className="text-center space-y-2">
+                {memberRanks[viewingProfile.userId]
+                  ? <>
+                      <RankBadge rank={memberRanks[viewingProfile.userId]} size="md" />
+                      <p className="text-white/70 text-sm">{memberRanks[viewingProfile.userId].points}점</p>
+                      <div className="flex flex-wrap justify-center gap-1.5 max-w-xs">
+                        {getRankPerks(memberRanks[viewingProfile.userId].points).perkLabels.map((label) => (
+                          <span key={label} className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/80">{label}</span>
+                        ))}
+                      </div>
+                    </>
+                  : <RankBadge rank={{ rankEmoji: '🪖', rankName: '이병', points: 0 }} size="md" />}
+              </div>
+            )}
             <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
           </div>
         </div>
@@ -596,9 +625,7 @@ export default function RoomPage() {
             <div className="flex-1 min-w-0">
               <p className="font-bold text-[var(--text)] truncate text-[15px]">{headerTitle}</p>
               {activeTab === 'chat' && memberRanks[user?.uid ?? ''] && (
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 truncate">
-                  {memberRanks[user!.uid].rankEmoji} {memberRanks[user!.uid].rankName}
-                </p>
+                <RankBadge rank={memberRanks[user!.uid]} />
               )}
             </div>
             {activeTab === 'chat' && (
@@ -670,6 +697,14 @@ export default function RoomPage() {
                 </button>
               </div>
             )}
+            {room && (
+              <ChatMemberRanks
+                memberIds={room.memberIds}
+                memberProfiles={memberProfiles}
+                memberRanks={memberRanks}
+                onMemberClick={openProfile}
+              />
+            )}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" onClick={() => setReactionTarget(null)}>
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -685,6 +720,8 @@ export default function RoomPage() {
               )}
               {messages.map((msg, idx) => {
                 const isMine = msg.authorId === user?.uid
+                const authorPoints = memberRanks[msg.authorId]?.points ?? 0
+                const authorRank = memberRanks[msg.authorId]
                 const unreadByOthers = isMine && room
                   ? countUnreadByOthers(msg, room.memberIds, memberReadAt)
                   : 0
@@ -713,22 +750,32 @@ export default function RoomPage() {
                     <div className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                       {!isMine && (
                         <div
-                          className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1 cursor-pointer active:scale-90 transition-transform"
-                          onClick={() => setViewingProfile({ name: msg.authorName, photoURL: msg.authorPhotoURL })}
+                          className={`w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1 cursor-pointer active:scale-90 transition-transform ${getRankAvatarClass(authorPoints)}`}
+                          onClick={() => openProfile(msg.authorName, msg.authorPhotoURL, msg.authorId)}
                         >
                           {msg.authorPhotoURL ? <img src={msg.authorPhotoURL} alt={msg.authorName} className="w-full h-full object-cover" /> : msg.authorName[0]}
                         </div>
                       )}
                       {isMine && (
                         <div
-                          className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1 cursor-pointer active:scale-90 transition-transform"
-                          onClick={() => setViewingProfile({ name: user?.displayName ?? '나', photoURL: user?.photoURL ?? undefined })}
+                          className={`w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 mt-1 cursor-pointer active:scale-90 transition-transform ${getRankAvatarClass(authorPoints)}`}
+                          onClick={() => openProfile(user?.displayName ?? '나', user?.photoURL ?? undefined, user?.uid)}
                         >
                           {user?.photoURL ? <img src={user.photoURL} alt="나" className="w-full h-full object-cover" /> : (user?.displayName ?? '?')[0]}
                         </div>
                       )}
                       <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
-                        {!isMine && <span className="text-xs text-gray-400 ml-1">{msg.authorName}</span>}
+                        {!isMine && (
+                          <div className="flex items-center gap-1 ml-1">
+                            <span className="text-xs text-gray-400">{msg.authorName}</span>
+                            {authorRank
+                              ? <RankBadge rank={authorRank} />
+                              : <RankBadge rank={{ rankEmoji: '🪖', rankName: '이병', points: 0 }} />}
+                          </div>
+                        )}
+                        {isMine && memberRanks[user?.uid ?? ''] && (
+                          <RankBadge rank={memberRanks[user!.uid]} />
+                        )}
                         <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                           {isMine && unreadByOthers > 0 && (
                             <span className="text-[11px] font-bold text-violet-400 dark:text-violet-300 mb-2 shrink-0 tabular-nums">
@@ -739,7 +786,7 @@ export default function RoomPage() {
                             className={`relative cursor-pointer select-none max-w-full ${
                               msg.imageURL && !msg.replyTo && !msg.text
                                 ? 'rounded-2xl overflow-hidden'
-                                : `text-sm px-3.5 py-2.5 ${isMine ? 'chat-bubble-mine' : 'chat-bubble-other'}`
+                                : `text-sm px-3.5 py-2.5 ${getRankBubbleClass(authorPoints, isMine)}`
                             }`}
                             onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
                             onTouchStart={() => {
@@ -778,12 +825,14 @@ export default function RoomPage() {
                               >
                                 ↩ 답장
                               </button>
-                              <button
-                                onClick={() => pinMessage(msg)}
-                                className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 shadow-xl active:scale-95 transition-all"
-                              >
-                                📌 공지
-                              </button>
+                              {myRankPerks.canPinNotice && (
+                                <button
+                                  onClick={() => pinMessage(msg)}
+                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 shadow-xl active:scale-95 transition-all"
+                                >
+                                  📌 공지
+                                </button>
+                              )}
                               {isMine && (
                                 <button
                                   onClick={() => deleteMessage(msg)}

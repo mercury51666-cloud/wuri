@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
-import { RANK_TIERS, getNextRank, POINTS, getWeekKey, type RankTier } from '../utils/rankSystem'
+import { RANK_TIERS, getNextRank, POINTS, getWeekKey, TIER_PERK_SUMMARY, type RankTier } from '../utils/rankSystem'
 import type { RoomRankData } from '../utils/roomPoints'
 
 interface Props {
@@ -82,9 +82,14 @@ export default function RankBoard({ roomId }: Props) {
         </div>
         <div className="divide-y divide-gray-50 dark:divide-white/5">
           {RANK_TIERS.map((tier) => (
-            <div key={tier.name} className="px-4 py-2.5 flex items-center justify-between text-sm">
-              <span className="font-semibold text-gray-800 dark:text-white">{tier.emoji} {tier.name}</span>
-              <span className="text-gray-400">{tier.min}점~</span>
+            <div key={tier.name} className="px-4 py-2.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold text-gray-800 dark:text-white">{tier.emoji} {tier.name}</span>
+                <span className="text-gray-400">{tier.min}점~</span>
+              </div>
+              {TIER_PERK_SUMMARY[tier.name] && (
+                <p className="text-[11px] text-gray-400 mt-1">{TIER_PERK_SUMMARY[tier.name].join(' · ')}</p>
+              )}
             </div>
           ))}
         </div>

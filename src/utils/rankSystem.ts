@@ -58,3 +58,93 @@ export function formatRankLabel(points: number): string {
   const rank = getRankFromPoints(points)
   return `${rank.emoji} ${rank.name}`
 }
+
+export function getRankLevel(points: number): number {
+  let level = 0
+  for (let i = 0; i < RANK_TIERS.length; i++) {
+    if (points >= RANK_TIERS[i].min) level = i
+  }
+  return level
+}
+
+export const BASE_REACTIONS = ['❤️', '😂', '😮', '😢', '👍', '🔥'] as const
+
+export interface RankPerks {
+  level: number
+  tier: RankTier
+  canPinNotice: boolean
+  bonusReactions: string[]
+  perkLabels: string[]
+}
+
+export function getRankPerks(points: number): RankPerks {
+  const level = getRankLevel(points)
+  const tier = getRankFromPoints(points)
+  const bonusReactions: string[] = []
+  const perkLabels: string[] = ['채팅 계급 뱃지']
+
+  if (level >= 2) perkLabels.push('프로필 테두리 강조')
+  if (level >= 3) perkLabels.push('공지 고정')
+  if (level >= 4) {
+    bonusReactions.push('💎')
+    perkLabels.push('특수 반응 💎')
+  }
+  if (level >= 5) {
+    bonusReactions.push('✨')
+    perkLabels.push('골드 말풍선')
+  }
+  if (level >= 6) {
+    bonusReactions.push('🎖️')
+    perkLabels.push('엘리트 말풍선 · 반응 🎖️')
+  }
+
+  return {
+    level,
+    tier,
+    canPinNotice: level >= 3,
+    bonusReactions,
+    perkLabels,
+  }
+}
+
+export function getAvailableReactions(points: number): string[] {
+  const { bonusReactions } = getRankPerks(points)
+  return [...BASE_REACTIONS, ...bonusReactions]
+}
+
+export function getRankBubbleClass(points: number, isMine: boolean): string {
+  const level = getRankLevel(points)
+  if (isMine) {
+    if (level >= 6) return 'chat-bubble-mine chat-bubble-mine-officer'
+    if (level >= 5) return 'chat-bubble-mine chat-bubble-mine-elite'
+    if (level >= 4) return 'chat-bubble-mine chat-bubble-mine-gold'
+    if (level >= 3) return 'chat-bubble-mine chat-bubble-mine-silver'
+    return 'chat-bubble-mine'
+  }
+  if (level >= 6) return 'chat-bubble-other chat-bubble-other-officer'
+  if (level >= 5) return 'chat-bubble-other chat-bubble-other-elite'
+  if (level >= 4) return 'chat-bubble-other chat-bubble-other-gold'
+  if (level >= 3) return 'chat-bubble-other chat-bubble-other-silver'
+  if (level >= 2) return 'chat-bubble-other chat-bubble-other-copper'
+  return 'chat-bubble-other'
+}
+
+export function getRankAvatarClass(points: number): string {
+  const level = getRankLevel(points)
+  return `rank-avatar rank-avatar-${level}`
+}
+
+export function getRankBadgeClass(points: number): string {
+  const level = getRankLevel(points)
+  return `rank-badge rank-badge-${level}`
+}
+
+export const TIER_PERK_SUMMARY: Record<string, string[]> = {
+  '이병': ['채팅 계급 뱃지'],
+  '일병': ['채팅 계급 뱃지'],
+  '상병': ['채팅 계급 뱃지', '프로필 테두리 강조'],
+  '병장': ['공지 고정', '실버 말풍선'],
+  '하사': ['특수 반응 💎', '골드 말풍선'],
+  '중사': ['특수 반응 💎✨', '골드 말풍선'],
+  '상사': ['특수 반응 💎✨🎖️', '엘리트 말풍선'],
+}

@@ -2,6 +2,7 @@ import {
   Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight,
 } from 'lucide-react'
 import RoomAvatar from './RoomAvatar'
+import RankBadge from './RankBadge'
 import type { RoomRankData } from '../utils/roomPoints'
 import type { MoreSubTab } from './RoomBottomNav'
 
@@ -94,7 +95,9 @@ export default function RoomMorePanel({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[var(--text)] truncate">{profile?.displayName ?? '...'}</p>
-                  {rank && <p className="text-xs text-emerald-600 dark:text-emerald-400">{rank.rankEmoji} {rank.rankName}</p>}
+                  {rank
+                    ? <RankBadge rank={rank} />
+                    : <RankBadge rank={{ rankEmoji: '🪖', rankName: '이병', points: 0 }} />}
                 </div>
                 <ChevronRight size={16} className="text-[var(--text-muted)]" />
               </button>
