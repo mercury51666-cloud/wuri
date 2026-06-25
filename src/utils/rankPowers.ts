@@ -20,9 +20,13 @@ export function canMute(actorPoints: number, targetPoints: number): boolean {
   return compareRankLevel(actorPoints, targetPoints) > 0
 }
 
-/** 계급이 strictly 낮을 때만 */
+/** 계급이 더 낮거나, 같은 계급이면 점수가 더 낮을 때 */
 export function canSalute(actorPoints: number, targetPoints: number): boolean {
-  return compareRankLevel(actorPoints, targetPoints) < 0
+  if (actorPoints === targetPoints) return false
+  const levelDiff = compareRankLevel(actorPoints, targetPoints)
+  if (levelDiff < 0) return true
+  if (levelDiff === 0 && targetPoints > actorPoints) return true
+  return false
 }
 
 export function buildMuteEventText(
@@ -55,7 +59,7 @@ export const RANK_FUN_POWERS = [
   {
     icon: '🫡',
     title: '경례',
-    desc: '내 계급이 더 낮으면 상급에게 경례 메시지를 보낼 수 있어요 (30초 쿨타임)',
+    desc: '내 계급·점수가 더 낮으면 상급에게 경례 메시지를 보낼 수 있어요 (30초 쿨타임)',
   },
   {
     icon: '📌',

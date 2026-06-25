@@ -56,7 +56,12 @@ interface Message {
   reactions?: Reaction
   replyTo?: ReplyTo
   type?: 'rank_event'
+  messageType?: 'rank_event'
   event?: 'mute' | 'salute'
+}
+
+function isRankEventMessage(msg: Message): boolean {
+  return msg.messageType === 'rank_event' || msg.type === 'rank_event'
 }
 
 interface Room {
@@ -151,11 +156,12 @@ export default function RoomPage() {
         until: Date.now() + MUTE_DURATION_MS,
       })
       await addDoc(collection(db, 'rooms', roomId, 'messages'), {
-        type: 'rank_event',
+        messageType: 'rank_event',
         event: 'mute',
         text: buildMuteEventText(user.displayName || '친구', actorRankName, targetName),
         authorId: user.uid,
         authorName: user.displayName || '친구',
+        authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
       })
       muteCooldownRef.current[key] = Date.now() + MUTE_COOLDOWN_MS
@@ -167,11 +173,15 @@ export default function RoomPage() {
   }
 
   const handleSalute = async (targetId: string, targetName: string) => {
-    if (!user || !roomId || targetId === user.uid) return
+    if (!user || !roomId) {
+      toast('잠시 후 다시 시도해 주세요')
+      return
+    }
+    if (targetId === user.uid) return
     const myPoints = getMemberPoints(user.uid)
     const targetPoints = getMemberPoints(targetId)
     if (!canSalute(myPoints, targetPoints)) {
-      toast('계급이 더 높은 분에게만 경례할 수 있어요')
+      toast('계급·점수가 더 높은 분에게만 경례할 수 있어요')
       return
     }
     if (saluteCooldownRef.current > Date.now()) {
@@ -182,7 +192,7 @@ export default function RoomPage() {
     const targetRankName = getRankName(targetPoints)
     try {
       await addDoc(collection(db, 'rooms', roomId, 'messages'), {
-        type: 'rank_event',
+        messageType: 'rank_event',
         event: 'salute',
         text: buildSaluteEventText(
           user.displayName || '친구',
@@ -192,6 +202,7 @@ export default function RoomPage() {
         ),
         authorId: user.uid,
         authorName: user.displayName || '친구',
+        authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
       })
       saluteCooldownRef.current = Date.now() + SALUTE_COOLDOWN_MS
@@ -722,15 +733,17 @@ export default function RoomPage() {
                     🤐 벙어리 10초
                   </button>
                 )}
-                {canSalute(getMemberPoints(user.uid), getMemberPoints(viewingProfile.userId)) && (
-                  <button
-                    type="button"
-                    onClick={() => handleSalute(viewingProfile.userId!, viewingProfile.name)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600/90 text-white text-sm font-bold active:scale-95 transition-transform"
-                  >
-                    🫡 경례
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleSalute(viewingProfile.userId!, viewingProfile.name)}
+                  className={`px-4 py-2 rounded-xl text-white text-sm font-bold active:scale-95 transition-transform ${
+                    canSalute(getMemberPoints(user.uid), getMemberPoints(viewingProfile.userId))
+                      ? 'bg-emerald-600/90'
+                      : 'bg-gray-500/50'
+                  }`}
+                >
+                  🫡 경례
+                </button>
               </div>
             )}
             <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
@@ -864,7 +877,7 @@ export default function RoomPage() {
                 </div>
               )}
               {messages.map((msg, idx) => {
-                if (msg.type === 'rank_event') {
+                if (isRankEventMessage(msg)) {
                   return (
                     <div key={msg.id} className="flex justify-center my-1">
                       <p className={`rank-event rank-event-${msg.event ?? 'mute'} text-xs px-3 py-1.5 rounded-full`}>
@@ -994,6 +1007,14 @@ export default function RoomPage() {
                                   className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-rose-500 dark:text-rose-400 shadow-xl active:scale-95 transition-all"
                                 >
                                   🤐 벙어리
+                                </button>
+                              )}
+                              {!isMine && (
+                                <button
+                                  onClick={() => handleSalute(msg.authorId, msg.authorName)}
+                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-emerald-100 dark:border-emerald-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 shadow-xl active:scale-95 transition-all"
+                                >
+                                  🫡 경례
                                 </button>
                               )}
                               {isMine && (
