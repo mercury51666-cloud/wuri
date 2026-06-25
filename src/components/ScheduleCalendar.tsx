@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
+import { useToast } from '../contexts/ToastContext'
 
 interface Props {
   roomId: string
@@ -59,6 +60,7 @@ function dDayLabel(days: number) {
 
 export default function ScheduleCalendar({ roomId }: Props) {
   const { user } = useAuthState()
+  const { toast } = useToast()
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -134,6 +136,9 @@ export default function ScheduleCalendar({ roomId }: Props) {
         createdAt: serverTimestamp(),
       })
       setShowAdd(false)
+      toast('약속을 추가했어요')
+    } catch {
+      toast('약속 추가에 실패했어요. 잠시 후 다시 시도해 주세요')
     } finally {
       setSaving(false)
     }
@@ -141,7 +146,12 @@ export default function ScheduleCalendar({ roomId }: Props) {
 
   const removeEvent = async (ev: ScheduleEvent) => {
     if (!confirm(`"${ev.title}" 약속을 삭제할까요?`)) return
-    await deleteDoc(doc(db, 'rooms', roomId, 'events', ev.id))
+    try {
+      await deleteDoc(doc(db, 'rooms', roomId, 'events', ev.id))
+      toast('약속을 삭제했어요')
+    } catch {
+      toast('약속 삭제에 실패했어요')
+    }
   }
 
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
