@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { doc, onSnapshot, setDoc, getDoc, arrayUnion, collection, getDocs, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
+import { awardMissionPoints } from '../utils/roomPoints'
 
 async function cleanupOldMissions(roomId: string, today: string) {
   try {
@@ -108,6 +109,7 @@ export default function DailyMission({ roomId }: Props) {
   const [data, setData] = useState<MissionData | null>(null)
   const [uploading, setUploading] = useState<number | null>(null)
   const [streak, setStreak] = useState(0)
+  const [pointToast, setPointToast] = useState('')
   const fileRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
   const today = new Date().toISOString().slice(0, 10)
   const missions = getTodayMissions()
@@ -129,8 +131,13 @@ export default function DailyMission({ roomId }: Props) {
     })
   }, [roomId, today])
 
+  const myUploads = new Set(
+    (data?.uploads ?? []).filter((u) => u.userId === user?.uid).map((u) => u.missionIdx)
+  )
+
   const handleUpload = async (missionIdx: number, file: File) => {
     if (!user) return
+    const alreadyDone = myUploads.has(missionIdx)
     setUploading(missionIdx)
     try {
       const url = await uploadToCloudinary(file)
@@ -145,13 +152,24 @@ export default function DailyMission({ roomId }: Props) {
         }),
       }, { merge: true })
 
-      // 3개 모두 완료 시 스트릭 업데이트
       const currentUploads = new Set(
         (data?.uploads ?? []).filter((u) => u.userId === user.uid).map((u) => u.missionIdx)
       )
       currentUploads.add(missionIdx)
       if (currentUploads.size >= 3) {
         await updateStreak(roomId, user.uid, today)
+      }
+
+      if (!alreadyDone) {
+        const result = await awardMissionPoints(
+          roomId,
+          user.uid,
+          user.displayName ?? user.email ?? '익명',
+          today,
+          currentUploads.size >= 3,
+        )
+        setPointToast(`+${result.gained}점 · ${result.label}`)
+        setTimeout(() => setPointToast(''), 2500)
       }
     } catch {
       alert('업로드 실패! Cloudinary 설정을 확인해주세요.')
@@ -160,9 +178,6 @@ export default function DailyMission({ roomId }: Props) {
     }
   }
 
-  const myUploads = new Set(
-    (data?.uploads ?? []).filter((u) => u.userId === user?.uid).map((u) => u.missionIdx)
-  )
   const completedAll = myUploads.size >= 3
 
   return (
@@ -182,6 +197,9 @@ export default function DailyMission({ roomId }: Props) {
           )}
           {completedAll && (
             <span className="text-xs font-bold text-green-600 dark:text-green-400">🎉 완료!</span>
+          )}
+          {pointToast && (
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">{pointToast}</span>
           )}
         </div>
       </div>

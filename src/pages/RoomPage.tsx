@@ -12,6 +12,7 @@ import { countUnreadByOthers } from '../hooks/useReadStatus'
 import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
+import RankBoard from '../components/RankBoard'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
 import ScheduleCalendar from '../components/ScheduleCalendar'
@@ -20,6 +21,8 @@ import RoomAvatar from '../components/RoomAvatar'
 import { useUserProfiles } from '../hooks/useUserProfiles'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
+import { awardMessagePoints } from '../utils/roomPoints'
+import type { RoomRankData } from '../utils/roomPoints'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
@@ -62,7 +65,7 @@ const TABS: { id: Tab; emoji: string; label: string }[] = [
   { id: 'mascot',   emoji: '🐾', label: '마스코트' },
   { id: 'mission',  emoji: '🎯', label: '미션' },
   { id: 'location', emoji: '📍', label: '위치' },
-  { id: 'stats',    emoji: '📊', label: '통계' },
+  { id: 'stats',    emoji: '🎖️', label: '계급' },
 ]
 
 export default function RoomPage() {
@@ -100,6 +103,7 @@ export default function RoomPage() {
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
   const [, setTypingTick] = useState(0)
+  const [memberRanks, setMemberRanks] = useState<Record<string, RoomRankData>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -237,6 +241,15 @@ export default function RoomPage() {
     )
   }, [roomId])
 
+  useEffect(() => {
+    if (!roomId) return
+    return onSnapshot(collection(db, 'rooms', roomId, 'ranks'), (snap) => {
+      const map: Record<string, RoomRankData> = {}
+      snap.docs.forEach((d) => { map[d.id] = d.data() as RoomRankData })
+      setMemberRanks(map)
+    })
+  }, [roomId])
+
   // 기존 방에 비밀번호 없으면 멤버가 열 때 자동 생성
   useEffect(() => {
     if (!user || !roomId || !room || room.joinCode) return
@@ -346,6 +359,7 @@ export default function RoomPage() {
         }
       }
       await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
+      awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
       setText('')
       setReplyTarget(null)
       clearTyping()
@@ -376,6 +390,7 @@ export default function RoomPage() {
         }
       }
       await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
+      awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
       setReplyTarget(null)
     } finally {
       setSending(false)
@@ -572,6 +587,11 @@ export default function RoomPage() {
                 {room.joinCode && (
                   <p className="text-xs text-violet-500 dark:text-violet-400 font-mono tracking-wider mt-0.5">🔑 {room.joinCode}</p>
                 )}
+                {user && memberRanks[user.uid] && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                    {memberRanks[user.uid].rankEmoji} {memberRanks[user.uid].rankName} · {memberRanks[user.uid].points}점
+                  </p>
+                )}
               </div>
             </div>
 
@@ -612,6 +632,11 @@ export default function RoomPage() {
                           {profile?.displayName ?? '불러오는 중...'}
                           {isMe && <span className="text-xs text-violet-400 ml-1">(나)</span>}
                         </span>
+                        {memberRanks[uid] && (
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400 shrink-0">
+                            {memberRanks[uid].rankEmoji}{memberRanks[uid].rankName}
+                          </span>
+                        )}
                       </div>
                     )
                   })}
@@ -1003,7 +1028,12 @@ export default function RoomPage() {
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
         {/* 위치는 탭 전환 시에도 계속 추적하기 위해 숨김 처리 방식 사용 */}
         {roomId && <div className={`flex-1 overflow-y-auto p-4 ${activeTab !== 'location' ? 'hidden' : ''}`}><LocationMap roomId={roomId} visible={activeTab === 'location'} /></div>}
-        {activeTab === 'stats' && roomId && <div className="flex-1 overflow-y-auto p-4"><RoomStats roomId={roomId} /></div>}
+        {activeTab === 'stats' && roomId && (
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <RankBoard roomId={roomId} />
+            <RoomStats roomId={roomId} />
+          </div>
+        )}
       </div>
       )}
 
