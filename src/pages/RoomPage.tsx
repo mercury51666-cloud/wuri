@@ -8,6 +8,7 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useToast } from '../contexts/ToastContext'
+import { useMessageNotifications } from '../hooks/useNotifications'
 import { countUnreadByOthers } from '../hooks/useReadStatus'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
@@ -322,6 +323,8 @@ export default function RoomPage() {
     })
     setReactionTarget(null)
   }
+
+  useMessageNotifications(messages, user?.uid, room?.name ?? '우리방')
 
   useEffect(() => {
     if (!roomId) return
