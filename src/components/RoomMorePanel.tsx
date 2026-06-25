@@ -4,6 +4,7 @@ import {
 import RoomAvatar from './RoomAvatar'
 import RankBadge from './RankBadge'
 import type { RoomRankData } from '../utils/roomPoints'
+import { formatRankHonorificName } from '../utils/rankPowers'
 import type { MoreSubTab } from './RoomBottomNav'
 
 interface RoomInfo {
@@ -21,6 +22,7 @@ interface Props {
   changingPhoto: boolean
   memberRanks: Record<string, RoomRankData>
   memberProfiles: Record<string, { displayName: string; photoURL?: string | null }>
+  viewerPoints: number
   onSelectTab: (tab: MoreSubTab) => void
   onInvite: () => void
   onRename: () => void
@@ -38,7 +40,7 @@ const FEATURES: { id: MoreSubTab; label: string; desc: string; Icon: typeof Smil
 ]
 
 export default function RoomMorePanel({
-  room, dark, isJoined, changingPhoto, memberRanks, memberProfiles,
+  room, dark, isJoined, changingPhoto, memberRanks, memberProfiles, viewerPoints,
   onSelectTab, onInvite, onRename, onChangePhoto, onToggleDark, onLeave, onViewProfile,
 }: Props) {
   return (
@@ -80,21 +82,23 @@ export default function RoomMorePanel({
           {room.memberIds.map((uid) => {
             const profile = memberProfiles[uid]
             const rank = memberRanks[uid]
+            const rawName = profile?.displayName ?? '...'
+            const displayName = formatRankHonorificName(rawName, rank?.points ?? 0, viewerPoints)
             return (
               <button
                 key={uid}
                 type="button"
-                onClick={() => profile && onViewProfile(profile.displayName, profile.photoURL ?? undefined, uid)}
+                onClick={() => profile && onViewProfile(rawName, profile.photoURL ?? undefined, uid)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors"
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--brand-soft)] shrink-0">
                   {profile?.photoURL
                     ? <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
-                    : <span className="w-full h-full flex items-center justify-center text-sm font-bold text-[var(--brand)]">{(profile?.displayName ?? '?')[0]}</span>
+                    : <span className="w-full h-full flex items-center justify-center text-sm font-bold text-[var(--brand)]">{rawName[0]}</span>
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[var(--text)] truncate">{profile?.displayName ?? '...'}</p>
+                  <p className="text-sm font-semibold text-[var(--text)] truncate">{displayName}</p>
                   {rank
                     ? <RankBadge rank={rank} />
                     : <RankBadge rank={{ rankName: '이병', points: 0 }} />}

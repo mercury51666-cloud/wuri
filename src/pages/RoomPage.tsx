@@ -26,7 +26,7 @@ import type { RoomRankData } from '../utils/roomPoints'
 import { getAvailableReactions, getRankAvatarClass, getRankBubbleClass, getRankPerks } from '../utils/rankSystem'
 import {
   canMute, canSalute, buildMuteEventText, buildSaluteEventText,
-  getRankName, MUTE_DURATION_MS, MUTE_COOLDOWN_MS, SALUTE_COOLDOWN_MS,
+  getRankName, formatRankHonorificName, MUTE_DURATION_MS, MUTE_COOLDOWN_MS, SALUTE_COOLDOWN_MS,
   type RoomMute,
 } from '../utils/rankPowers'
 import RankBadge from '../components/RankBadge'
@@ -127,6 +127,8 @@ export default function RoomPage() {
     () => getRankPerks(memberRanks[user?.uid ?? '']?.points ?? 0),
     [memberRanks, user?.uid],
   )
+  const myPoints = useMemo(() => memberRanks[user?.uid ?? '']?.points ?? 0, [memberRanks, user?.uid])
+  const honorific = (name: string, memberPoints: number) => formatRankHonorificName(name, memberPoints, myPoints)
 
   const openProfile = (name: string, photoURL?: string, userId?: string) => {
     setViewingProfile({ name, photoURL, userId })
@@ -305,16 +307,21 @@ export default function RoomPage() {
     )
   }
 
-  const renderReplyQuote = (reply: ReplyTo, isMine: boolean) => (
+  const renderReplyQuote = (reply: ReplyTo, isMine: boolean) => {
+    const replyAuthorPoints = messages.find((m) => m.id === reply.id)?.authorId
+      ? getMemberPoints(messages.find((m) => m.id === reply.id)!.authorId)
+      : 0
+    return (
     <div className={`rounded-lg px-2.5 py-2 mb-2 ${isMine ? 'bg-black/15' : 'bg-gray-100 dark:bg-white/10'}`}>
       <p className={`text-[11px] font-semibold leading-tight mb-0.5 ${isMine ? 'text-white/90' : 'text-violet-500 dark:text-violet-400'}`}>
-        {reply.authorName}
+        {honorific(reply.authorName, replyAuthorPoints)}
       </p>
       <p className={`text-xs leading-snug line-clamp-2 ${isMine ? 'text-white/75' : 'text-gray-500 dark:text-gray-400'}`}>
         {reply.imageURL ? '📷 사진' : reply.text}
       </p>
     </div>
-  )
+    )
+  }
 
   const toggleReaction = async (msgId: string, emoji: string) => {
     if (!user || !roomId) return
@@ -706,7 +713,11 @@ export default function RoomPage() {
                 : <div className="w-full h-full flex items-center justify-center text-5xl font-black text-violet-600">{viewingProfile.name[0]}</div>
               }
             </div>
-            <p className="text-white text-xl font-bold">{viewingProfile.name}</p>
+            <p className="text-white text-xl font-bold">
+              {viewingProfile.userId
+                ? honorific(viewingProfile.name, getMemberPoints(viewingProfile.userId))
+                : viewingProfile.name}
+            </p>
             {viewingProfile.userId && (
               <div className="text-center space-y-2">
                 {memberRanks[viewingProfile.userId]
@@ -839,7 +850,7 @@ export default function RoomPage() {
                 >
                   <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">📌 공지</p>
                   <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
-                    <span className="font-semibold">{pinnedMessage.authorName}</span>
+                    <span className="font-semibold">{honorific(pinnedMessage.authorName, getMemberPoints(pinnedMessage.authorId))}</span>
                     {' · '}
                     {pinnedMessage.imageURL && !pinnedMessage.text
                       ? '📷 사진'
@@ -860,6 +871,7 @@ export default function RoomPage() {
                 memberIds={room.memberIds}
                 memberProfiles={memberProfiles}
                 memberRanks={memberRanks}
+                viewerPoints={myPoints}
                 onMemberClick={openProfile}
               />
             )}
@@ -935,7 +947,7 @@ export default function RoomPage() {
                       <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && (
                           <div className="flex items-center gap-1 ml-1">
-                            <span className="text-xs text-gray-400">{msg.authorName}</span>
+                            <span className="text-xs text-gray-400">{honorific(msg.authorName, authorPoints)}</span>
                             {authorRank
                               ? <RankBadge rank={authorRank} />
                               : <RankBadge rank={{ rankName: '이병', points: 0 }} />}
@@ -1083,6 +1095,7 @@ export default function RoomPage() {
             changingPhoto={changingPhoto}
             memberRanks={memberRanks}
             memberProfiles={memberProfiles}
+            viewerPoints={myPoints}
             onSelectTab={handleMoreSubTab}
             onInvite={() => setShowInvite(true)}
             onRename={openRename}
@@ -1116,15 +1129,15 @@ export default function RoomPage() {
                     <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </span>
                   {typingUsers.length === 1
-                    ? `${typingUsers[0].userName}님이 입력 중...`
-                    : `${typingUsers.map((t) => t.userName).join(', ')}님이 입력 중...`}
+                    ? `${honorific(typingUsers[0].userName, getMemberPoints(typingUsers[0].userId))}이 입력 중...`
+                    : `${typingUsers.map((t) => honorific(t.userName, getMemberPoints(t.userId))).join(', ')}이 입력 중...`}
                 </div>
               )}
               {replyTarget && (
                 <div className="px-4 pt-2 pb-1 flex items-start gap-2 border-b border-[var(--border)]">
                   <div className="flex-1 min-w-0 border-l-2 border-[var(--brand)] pl-2">
                     <p className="text-[11px] font-semibold text-[var(--brand)]">
-                      {replyTarget.authorName}에게 답장
+                      {honorific(replyTarget.authorName, getMemberPoints(replyTarget.authorId))}에게 답장
                     </p>
                     <p className="text-xs text-[var(--text-secondary)] truncate">
                       {getReplyPreview(replyTarget)}

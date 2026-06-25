@@ -1,11 +1,13 @@
 import RankBadge from './RankBadge'
 import { getRankFromPoints } from '../utils/rankSystem'
+import { formatRankHonorificName } from '../utils/rankPowers'
 import type { RoomRankData } from '../utils/roomPoints'
 
 interface Props {
   memberIds: string[]
   memberProfiles: Record<string, { displayName: string; photoURL?: string | null }>
   memberRanks: Record<string, RoomRankData>
+  viewerPoints: number
   onMemberClick: (name: string, photoURL?: string, userId?: string) => void
 }
 
@@ -27,7 +29,7 @@ function getDisplayRank(uid: string, name: string, ranks: Record<string, RoomRan
   }
 }
 
-export default function ChatMemberRanks({ memberIds, memberProfiles, memberRanks, onMemberClick }: Props) {
+export default function ChatMemberRanks({ memberIds, memberProfiles, memberRanks, viewerPoints, onMemberClick }: Props) {
   const sorted = [...memberIds].sort((a, b) => {
     const pa = memberRanks[a]?.points ?? 0
     const pb = memberRanks[b]?.points ?? 0
@@ -41,6 +43,7 @@ export default function ChatMemberRanks({ memberIds, memberProfiles, memberRanks
           const profile = memberProfiles[uid]
           const name = profile?.displayName ?? '...'
           const rank = getDisplayRank(uid, name, memberRanks)
+          const displayName = formatRankHonorificName(name, rank.points, viewerPoints)
           return (
             <button
               key={uid}
@@ -54,7 +57,7 @@ export default function ChatMemberRanks({ memberIds, memberProfiles, memberRanks
                   : <span className="w-full h-full flex items-center justify-center text-[9px] font-bold text-[var(--brand)]">{name[0]}</span>
                 }
               </div>
-              <span className="text-[11px] font-semibold text-[var(--text-secondary)] max-w-[4rem] truncate">{name}</span>
+              <span className="text-[11px] font-semibold text-[var(--text-secondary)] max-w-[4rem] truncate">{displayName}</span>
               <RankBadge rank={rank} />
             </button>
           )

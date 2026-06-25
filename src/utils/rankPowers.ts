@@ -50,6 +50,23 @@ export function getRankName(points: number): string {
   return getRankFromPoints(points).name
 }
 
+/** member가 viewer보다 상급인지 (경례 대상과 동일) */
+export function isSuperior(memberPoints: number, viewerPoints: number): boolean {
+  return canSalute(viewerPoints, memberPoints)
+}
+
+/** 상급 이름에 자동으로 님 붙이기 */
+export function formatRankHonorificName(
+  name: string,
+  memberPoints: number,
+  viewerPoints: number,
+): string {
+  const trimmed = name.trim()
+  if (!trimmed || trimmed.endsWith('님')) return trimmed || name
+  if (!isSuperior(memberPoints, viewerPoints)) return trimmed
+  return `${trimmed}님`
+}
+
 export const RANK_FUN_POWERS = [
   {
     icon: '🤐',
@@ -65,5 +82,10 @@ export const RANK_FUN_POWERS = [
     icon: '📌',
     title: '공지 고정',
     desc: '병장 이상은 메시지를 공지로 고정할 수 있어요',
+  },
+  {
+    icon: '🎖️',
+    title: '계급 호출',
+    desc: '채팅·멤버 목록에서 상급 이름에 자동으로 님이 붙어요',
   },
 ] as const
