@@ -6,17 +6,10 @@ import {
 import { db } from '../firebase'
 import type { User } from 'firebase/auth'
 import { getRankLevel } from '../utils/rankSystem'
-import { recordLoginStreak, setEquippedTitle } from '../utils/roomPoints'
-import type { RoomRankData } from '../utils/roomPoints'
-import {
-  birthdayKey, READ_NUDGE_MS, ROOM_THEMES,
-} from '../utils/roomFeatures'
-
-const THEME_MS = 60 * 60 * 1000
+import { birthdayKey, READ_NUDGE_MS } from '../utils/roomFeatures'
 
 export interface RoomMetaState {
   weeklyChampion?: { userId: string; userName: string; title: string }
-  roomTheme?: { accent: string; until: number; byUserName: string }
   hallOfFame: { weekKey: string; type: string; userName: string; value: number }[]
   birthdays: { userId: string; name: string }[]
 }
@@ -25,14 +18,12 @@ export function useRoomExtras(
   roomId: string | undefined,
   user: User | null,
   roomMemberIds: string[],
-  memberRanks: Record<string, RoomRankData>,
   memberProfiles: Record<string, { displayName: string }>,
   memberReadAt: Record<string, number>,
   messages: { id: string; authorId: string; authorName: string; text: string; createdAt: { seconds: number } | null }[],
   toast: (msg: string) => void,
 ) {
   const [meta, setMeta] = useState<RoomMetaState>({ hallOfFame: [], birthdays: [] })
-  const [loginStreak, setLoginStreak] = useState(0)
   const nudgedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
@@ -42,17 +33,11 @@ export function useRoomExtras(
       snap.docs.forEach((d) => {
         const data = d.data()
         if (d.id.startsWith('weeklyChampion_')) next.weeklyChampion = data as RoomMetaState['weeklyChampion']
-        if (d.id === 'roomTheme') next.roomTheme = data as RoomMetaState['roomTheme']
         if (d.id === 'hallOfFame') next.hallOfFame = (data.entries ?? []).slice(0, 10)
       })
       setMeta(next)
     })
   }, [roomId])
-
-  useEffect(() => {
-    if (!roomId || !user || !roomMemberIds.includes(user.uid)) return
-    recordLoginStreak(roomId, user.uid, user.displayName || '친구').then(setLoginStreak).catch(() => {})
-  }, [roomId, user?.uid, roomMemberIds.join(',')])
 
   useEffect(() => {
     if (!roomId) return
@@ -111,26 +96,6 @@ export function useRoomExtras(
     })()
     return () => { cancelled = true }
   }, [roomMemberIds.join(','), memberProfiles])
-
-  const setRoomTheme = useCallback(async (accent: string) => {
-    if (!user || !roomId) return
-    if (getRankLevel(memberRanks[user.uid]?.points ?? 0) < 6) {
-      toast('상사만 방 테마를 바꿀 수 있어요')
-      return
-    }
-    await setDoc(doc(db, 'rooms', roomId, 'meta', 'roomTheme'), {
-      accent,
-      until: Date.now() + THEME_MS,
-      byUserName: user.displayName || '친구',
-    })
-    toast('방 테마 변경! 🎨')
-  }, [user, roomId, memberRanks, toast])
-
-  const saveTitle = useCallback(async (title: string) => {
-    if (!user || !roomId) return
-    await setEquippedTitle(roomId, user.uid, user.displayName || '친구', title)
-    toast('칭호 장착! 🎖️')
-  }, [user, roomId, toast])
 
   const saveBirthday = useCallback(async (birthday: string) => {
     if (!user) return
@@ -192,20 +157,11 @@ export function useRoomExtras(
     toast('메시지 예약! ⏰')
   }, [user, roomId, toast])
 
-  const themeAccent = meta.roomTheme && meta.roomTheme.until > Date.now()
-    ? meta.roomTheme.accent
-    : undefined
-
   return {
     meta,
-    loginStreak,
-    themeAccent,
-    setRoomTheme,
-    saveTitle,
     saveBirthday,
     createPoll,
     votePoll,
     scheduleMessage,
-    ROOM_THEMES,
   }
 }

@@ -2,10 +2,9 @@ import type { RoomMetaState } from '../hooks/useRoomExtras'
 
 interface Props {
   meta: RoomMetaState
-  loginStreak: number
 }
 
-export default function ChatBanners({ meta, loginStreak }: Props) {
+export default function ChatBanners({ meta }: Props) {
   const items: { icon: string; text: string; cls: string }[] = []
 
   if (meta.weeklyChampion) {
@@ -20,20 +19,6 @@ export default function ChatBanners({ meta, loginStreak }: Props) {
       icon: '🎂',
       text: `생일 축하 ${meta.birthdays.map((b) => b.name).join(', ')}님!`,
       cls: 'banner-birthday',
-    })
-  }
-  if (meta.roomTheme && meta.roomTheme.until > Date.now()) {
-    items.push({
-      icon: '🎨',
-      text: `${meta.roomTheme.byUserName}님이 방 테마 변경 중`,
-      cls: 'banner-theme',
-    })
-  }
-  if (loginStreak >= 2) {
-    items.push({
-      icon: '🔥',
-      text: `연속 출석 ${loginStreak}일`,
-      cls: 'banner-streak',
     })
   }
 

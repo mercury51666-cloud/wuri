@@ -105,7 +105,7 @@ export default function RoomPage() {
   const [renaming, setRenaming] = useState(false)
   const [changingPhoto, setChangingPhoto] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
-  const [featureModal, setFeatureModal] = useState<'poll' | 'schedule' | 'title' | 'birthday' | 'theme' | null>(null)
+  const [featureModal, setFeatureModal] = useState<'poll' | 'schedule' | 'birthday' | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [activeTab, setActiveTab] = useState<RoomTab>('chat')
@@ -141,17 +141,12 @@ export default function RoomPage() {
   )
   const myPoints = useMemo(() => memberRanks[user?.uid ?? '']?.points ?? 0, [memberRanks, user?.uid])
   const honorific = (name: string, memberPoints: number) => formatRankHonorificName(name, memberPoints, myPoints)
-  const authorLabel = (name: string, uid: string, points: number) => {
-    const title = memberRanks[uid]?.equippedTitle
-    const base = honorific(name, points)
-    return title ? `[${title}] ${base}` : base
-  }
+  const authorLabel = (name: string, _uid: string, points: number) => honorific(name, points)
 
   const extras = useRoomExtras(
     roomId,
     user,
     room?.memberIds ?? [],
-    memberRanks,
     memberProfiles,
     memberReadAt,
     messages,
@@ -709,10 +704,7 @@ export default function RoomPage() {
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div
-      className="page-enter flex-1 min-h-0 w-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden"
-      style={extras.themeAccent ? { ['--brand' as string]: extras.themeAccent } : undefined}
-    >
+    <div className="page-enter flex-1 min-h-0 w-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden">
       {viewingPhoto && (
         <div
           className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4"
@@ -793,11 +785,7 @@ export default function RoomPage() {
             )}
             {viewingProfile.userId === user?.uid && (
               <div className="flex flex-wrap justify-center gap-2 mt-1">
-                <button type="button" onClick={() => setFeatureModal('title')} className="px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-bold">🎖️ 칭호</button>
                 <button type="button" onClick={() => setFeatureModal('birthday')} className="px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-bold">🎂 생일</button>
-                {getRankLevel(myPoints) >= 6 && (
-                  <button type="button" onClick={() => setFeatureModal('theme')} className="px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-bold">🎨 테마</button>
-                )}
               </div>
             )}
             <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
@@ -910,7 +898,7 @@ export default function RoomPage() {
               </div>
             )}
             {room && (
-              <ChatBanners meta={extras.meta} loginStreak={extras.loginStreak} />
+              <ChatBanners meta={extras.meta} />
             )}
             {room && (
               <ChatMemberRanks
@@ -1312,16 +1300,11 @@ export default function RoomPage() {
       <FeatureModals
         showPoll={featureModal === 'poll'}
         showSchedule={featureModal === 'schedule'}
-        showTitle={featureModal === 'title'}
         showBirthday={featureModal === 'birthday'}
-        showTheme={featureModal === 'theme'}
         onClose={() => setFeatureModal(null)}
         onCreatePoll={extras.createPoll}
         onSchedule={(t, min) => extras.scheduleMessage(t, Date.now() + min * 60000, parseMentionIds(t, memberProfiles))}
-        onSaveTitle={extras.saveTitle}
         onSaveBirthday={extras.saveBirthday}
-        onSetTheme={extras.setRoomTheme}
-        roomThemes={extras.ROOM_THEMES}
       />
 
       <input

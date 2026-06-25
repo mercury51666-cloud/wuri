@@ -90,12 +90,9 @@ export const RANK_FUN_POWERS = [
   },
   { icon: '🏆', title: '계급전', desc: '주간 1등 명예의 전당 + 배너' },
   { icon: '🎉', title: '임관식', desc: '승진 시 채팅 축하 이벤트' },
-  { icon: '🔥', title: '연속 출석', desc: '매일 접속 streak 보너스' },
-  { icon: '🎨', title: '방 테마', desc: '상사 1시간 accent 변경' },
   { icon: '🎂', title: '생일', desc: '생일 등록 시 배너' },
   { icon: '@', title: '멘션', desc: '@이름 으로 호출' },
   { icon: '📊', title: '투표', desc: '병장 이상 2표' },
   { icon: '📭', title: '읽씹 알림', desc: '30분 미확인 시 알림' },
   { icon: '⏰', title: '예약 메시지', desc: '앱 켜져 있을 때 자동 전송' },
-  { icon: '🏷️', title: '칭호', desc: '프로필에서 칭호 장착' },
 ] as const

@@ -163,33 +163,6 @@ async function saveRank(roomId: string, data: RoomRankData) {
   await setDoc(doc(db, 'rooms', roomId, 'ranks', data.userId), data, { merge: true })
 }
 
-export async function recordLoginStreak(
-  roomId: string,
-  userId: string,
-  userName: string,
-): Promise<number> {
-  const today = new Date().toISOString().slice(0, 10)
-  const data = await loadRank(roomId, userId, userName)
-  if (data.lastLoginDate === today) return data.loginStreak ?? 0
-
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  const streak = data.lastLoginDate === yesterday ? (data.loginStreak ?? 0) + 1 : 1
-  data.loginStreak = streak
-  data.lastLoginDate = today
-  if (streak >= 2) data.points += Math.min(streak, 7)
-  const rank = getRankFromPoints(data.points)
-  data.rankName = rank.name
-  data.rankEmoji = rank.emoji
-  await saveRank(roomId, data)
-  return streak
-}
-
-export async function setEquippedTitle(roomId: string, userId: string, userName: string, title: string) {
-  const data = await loadRank(roomId, userId, userName)
-  data.equippedTitle = title.slice(0, 12)
-  await saveRank(roomId, data)
-}
-
 export async function awardMissionPoints(
   roomId: string,
   userId: string,
