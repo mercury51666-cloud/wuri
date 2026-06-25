@@ -831,53 +831,6 @@ export default function RoomPage() {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="border-t border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md safe-bottom shrink-0">
-              {typingUsers.length > 0 && (
-                <div className="px-4 pt-2 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
-                  <span className="flex gap-0.5">
-                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </span>
-                  {typingUsers.length === 1
-                    ? `${typingUsers[0].userName}님이 입력 중...`
-                    : `${typingUsers.map((t) => t.userName).join(', ')}님이 입력 중...`}
-                </div>
-              )}
-              {replyTarget && (
-                <div className="px-4 pt-3 flex items-start gap-2 border-b border-gray-100 dark:border-white/10">
-                  <div className="flex-1 min-w-0 border-l-2 border-violet-400 pl-2">
-                    <p className="text-[11px] font-semibold text-violet-500 dark:text-violet-400">
-                      {replyTarget.authorName}에게 답장
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {getReplyPreview(replyTarget)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setReplyTarget(null)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg px-1 active:scale-90 transition-all"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2.5">
-                <label className="icon-btn shrink-0 cursor-pointer">
-                  <span className="text-lg">🖼️</span>
-                  <input type="file" accept="image/*" className="hidden" disabled={sending}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
-                  />
-                </label>
-                <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }} placeholder="메시지 보내기..."
-                  className="input-field flex-1 py-2.5"
-                />
-                <button type="submit" disabled={sending || !text.trim()}
-                  className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
-                >{sending ? '⏳' : '→'}</button>
-              </form>
-            </div>
           </>
         )}
 
@@ -918,7 +871,54 @@ export default function RoomPage() {
       </div>
       )}
 
-      {isJoined && <RoomBottomNav activeTab={activeTab} onChange={handlePrimaryTab} />}
+      {isJoined && (
+        <div className="room-bottom-dock shrink-0">
+          {activeTab === 'chat' && (
+            <>
+              {typingUsers.length > 0 && (
+                <div className="px-4 pt-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0].userName}님이 입력 중...`
+                    : `${typingUsers.map((t) => t.userName).join(', ')}님이 입력 중...`}
+                </div>
+              )}
+              {replyTarget && (
+                <div className="px-4 pt-2 pb-1 flex items-start gap-2 border-b border-[var(--border)]">
+                  <div className="flex-1 min-w-0 border-l-2 border-[var(--brand)] pl-2">
+                    <p className="text-[11px] font-semibold text-[var(--brand)]">
+                      {replyTarget.authorName}에게 답장
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)] truncate">
+                      {getReplyPreview(replyTarget)}
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setReplyTarget(null)} className="icon-btn text-lg">✕</button>
+                </div>
+              )}
+              <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2">
+                <label className="icon-btn shrink-0 cursor-pointer">
+                  <span className="text-lg">🖼️</span>
+                  <input type="file" accept="image/*" className="hidden" disabled={sending}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
+                  />
+                </label>
+                <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }} placeholder="메시지 보내기..."
+                  className="input-field flex-1 py-2.5"
+                />
+                <button type="submit" disabled={sending || !text.trim()}
+                  className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
+                >{sending ? '⏳' : '→'}</button>
+              </form>
+            </>
+          )}
+          <RoomBottomNav activeTab={activeTab} onChange={handlePrimaryTab} />
+        </div>
+      )}
 
       {showRename && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">

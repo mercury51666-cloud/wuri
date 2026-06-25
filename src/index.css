@@ -194,7 +194,12 @@ html, body {
 }
 
 .tab-bar {
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: transparent;
+  border-top: 1px solid var(--border);
+}
+
+.room-bottom-dock {
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
@@ -205,7 +210,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 0.125rem;
-  padding: 0.5rem 0.25rem 0.375rem;
+  padding: 0.375rem 0.25rem 0.25rem;
   color: var(--text-muted);
   font-size: 0.625rem;
   font-weight: 600;
