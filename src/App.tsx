@@ -36,7 +36,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="app-shell flex items-center justify-center">
+      <div className="app-shell flex flex-1 min-h-dvh items-center justify-center">
         <div className="text-center">
           <div className="w-11 h-11 border-[3px] border-[var(--brand)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-[var(--text-secondary)] font-medium text-sm">잠깐만요...</p>
@@ -49,6 +49,7 @@ function App() {
     <ThemeProvider>
     <ToastProvider>
     <BrowserRouter>
+      <div className="flex flex-col flex-1 min-h-dvh">
       <Routes>
         <Route
           path="/login"
@@ -64,6 +65,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </div>
     </BrowserRouter>
     </ToastProvider>
     </ThemeProvider>

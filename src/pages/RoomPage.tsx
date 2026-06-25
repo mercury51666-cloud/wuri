@@ -524,7 +524,7 @@ export default function RoomPage() {
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div className="page-enter h-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden">
+    <div className="page-enter flex-1 min-h-0 w-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden">
       {viewingPhoto && (
         <div
           className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4"
