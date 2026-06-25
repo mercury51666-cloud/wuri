@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { RANK_TIERS, getNextRank, POINTS, getWeekKey, TIER_PERK_SUMMARY, type RankTier } from '../utils/rankSystem'
 import type { RoomRankData } from '../utils/roomPoints'
+import RankInsignia from './RankInsignia'
 
 interface Props {
   roomId: string
@@ -37,7 +38,10 @@ export default function RankBoard({ roomId }: Props) {
       {myRank && (
         <div className="bg-gradient-to-r from-emerald-600 to-green-700 rounded-2xl p-5 text-white shadow-lg">
           <p className="text-xs font-semibold opacity-80 tracking-widest uppercase mb-1">내 계급</p>
-          <p className="text-3xl font-black">{myRank.rankEmoji} {myRank.rankName}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <RankInsignia points={myRank.points} size="lg" />
+            <p className="text-3xl font-black">{myRank.rankName}</p>
+          </div>
           <p className="text-sm opacity-90 mt-1">{myRank.points}점</p>
           {nextRank && (
             <div className="mt-3">
@@ -83,9 +87,12 @@ export default function RankBoard({ roomId }: Props) {
         <div className="divide-y divide-gray-50 dark:divide-white/5">
           {RANK_TIERS.map((tier) => (
             <div key={tier.name} className="px-4 py-2.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-gray-800 dark:text-white">{tier.emoji} {tier.name}</span>
-                <span className="text-gray-400">{tier.min}점~</span>
+              <div className="flex items-center justify-between text-sm gap-2">
+                <span className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                  <RankInsignia points={tier.min} size="sm" />
+                  {tier.name}
+                </span>
+                <span className="text-gray-400 shrink-0">{tier.min}점~</span>
               </div>
               {TIER_PERK_SUMMARY[tier.name] && (
                 <p className="text-[11px] text-gray-400 mt-1">{TIER_PERK_SUMMARY[tier.name].join(' · ')}</p>
@@ -115,8 +122,11 @@ export default function RankBoard({ roomId }: Props) {
                   </p>
                   <p className="text-xs text-gray-400">이번 주 미션 {r.weeklyMissions} · 채팅 {r.weeklyMessages}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{r.rankEmoji} {r.rankName}</p>
+                <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <RankInsignia points={r.points} size="sm" />
+                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{r.rankName}</p>
+                  </div>
                   <p className="text-xs text-gray-400">{r.points}점</p>
                 </div>
               </div>

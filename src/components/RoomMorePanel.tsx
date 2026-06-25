@@ -97,7 +97,7 @@ export default function RoomMorePanel({
                   <p className="text-sm font-semibold text-[var(--text)] truncate">{profile?.displayName ?? '...'}</p>
                   {rank
                     ? <RankBadge rank={rank} />
-                    : <RankBadge rank={{ rankEmoji: '🪖', rankName: '이병', points: 0 }} />}
+                    : <RankBadge rank={{ rankName: '이병', points: 0 }} />}
                 </div>
                 <ChevronRight size={16} className="text-[var(--text-muted)]" />
               </button>

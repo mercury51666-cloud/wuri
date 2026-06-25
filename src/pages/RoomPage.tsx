@@ -585,7 +585,7 @@ export default function RoomPage() {
                         ))}
                       </div>
                     </>
-                  : <RankBadge rank={{ rankEmoji: '🪖', rankName: '이병', points: 0 }} size="md" />}
+                  : <RankBadge rank={{ rankName: '이병', points: 0 }} size="md" />}
               </div>
             )}
             <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
@@ -770,7 +770,7 @@ export default function RoomPage() {
                             <span className="text-xs text-gray-400">{msg.authorName}</span>
                             {authorRank
                               ? <RankBadge rank={authorRank} />
-                              : <RankBadge rank={{ rankEmoji: '🪖', rankName: '이병', points: 0 }} />}
+                              : <RankBadge rank={{ rankName: '이병', points: 0 }} />}
                           </div>
                         )}
                         {isMine && memberRanks[user?.uid ?? ''] && (

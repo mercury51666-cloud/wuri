@@ -1,17 +1,18 @@
 export interface RankTier {
   min: number
   name: string
+  /** @deprecated 표시는 RankInsignia 컴포넌트 사용 */
   emoji: string
 }
 
 export const RANK_TIERS: RankTier[] = [
-  { min: 0, name: '이병', emoji: '🪖' },
-  { min: 50, name: '일병', emoji: '⭐' },
-  { min: 150, name: '상병', emoji: '🔥' },
-  { min: 350, name: '병장', emoji: '👑' },
-  { min: 700, name: '하사', emoji: '🎖️' },
-  { min: 1200, name: '중사', emoji: '🏆' },
-  { min: 2000, name: '상사', emoji: '⚔️' },
+  { min: 0, name: '이병', emoji: '▮' },
+  { min: 50, name: '일병', emoji: '▮▮' },
+  { min: 150, name: '상병', emoji: '▮▮▮' },
+  { min: 350, name: '병장', emoji: '▮▮▮▮' },
+  { min: 700, name: '하사', emoji: '◢' },
+  { min: 1200, name: '중사', emoji: '◢◢' },
+  { min: 2000, name: '상사', emoji: '◢◢◢' },
 ]
 
 export const POINTS = {
@@ -56,7 +57,14 @@ export function getPreviousWeekKey(weekKey: string): string | null {
 
 export function formatRankLabel(points: number): string {
   const rank = getRankFromPoints(points)
-  return `${rank.emoji} ${rank.name}`
+  return `${rank.name}`
+}
+
+/** 이병~병장: 가로 짝대기 1~4개, 하사~상사: 역V형 계급장 */
+export function getRankInsigniaProps(points: number): { type: 'bars' | 'chevrons'; count: number } {
+  const level = getRankLevel(points)
+  if (level <= 3) return { type: 'bars', count: level + 1 }
+  return { type: 'chevrons', count: level - 3 }
 }
 
 export function getRankLevel(points: number): number {

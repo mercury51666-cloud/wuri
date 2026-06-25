@@ -237,6 +237,63 @@ html, body {
   background: var(--surface-3);
 }
 
+/* ── 군 계급장 (짝대기) ── */
+.rank-insignia {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #3d6b1e 0%, #2d5016 100%);
+  border: 1px solid #1a3a0c;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.rank-insignia-sm { padding: 2px 3px; gap: 1px; min-width: 14px; }
+.rank-insignia-md { padding: 3px 4px; gap: 1.5px; min-width: 18px; }
+.rank-insignia-lg { padding: 4px 5px; gap: 2px; min-width: 22px; }
+
+.rank-insignia-bars { flex-direction: column-reverse; }
+.rank-bar {
+  display: block;
+  width: 10px;
+  height: 2px;
+  border-radius: 0.5px;
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 55%, #d97706 100%);
+  box-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.25);
+}
+.rank-insignia-md .rank-bar { width: 13px; height: 2.5px; }
+.rank-insignia-lg .rank-bar { width: 16px; height: 3px; }
+
+.rank-insignia-chevrons { gap: 0; padding-bottom: 1px; }
+.rank-chevron {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 3px solid #fbbf24;
+  filter: drop-shadow(0 0.5px 0 rgba(0, 0, 0, 0.3));
+  margin-top: -1px;
+}
+.rank-insignia-md .rank-chevron {
+  border-left-width: 6px;
+  border-right-width: 6px;
+  border-top-width: 4px;
+}
+.rank-insignia-lg .rank-chevron {
+  border-left-width: 7px;
+  border-right-width: 7px;
+  border-top-width: 5px;
+}
+.rank-star {
+  width: 4px;
+  height: 4px;
+  margin-top: 1px;
+  background: #fde68a;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.rank-insignia-md .rank-star { width: 5px; height: 5px; }
+.rank-insignia-lg .rank-star { width: 6px; height: 6px; }
+
 /* ── 계급 뱃지 ── */
 .rank-badge {
   background: var(--surface-2);
