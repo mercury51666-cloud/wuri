@@ -20,8 +20,6 @@ export const POINTS = {
   MISSION_DAILY_BONUS: 20,
   MESSAGE: 1,
   MESSAGE_DAILY_CAP: 20,
-  WEEKLY_MISSION_TOP: 50,
-  WEEKLY_CHAT_TOP: 30,
 } as const
 
 export function getRankFromPoints(points: number): RankTier {
@@ -80,7 +78,6 @@ export const BASE_REACTIONS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
 export interface RankPerks {
   level: number
   tier: RankTier
-  canPinNotice: boolean
   bonusReactions: string[]
   perkLabels: string[]
 }
@@ -92,7 +89,6 @@ export function getRankPerks(points: number): RankPerks {
   const perkLabels: string[] = ['채팅 계급 뱃지']
 
   if (level >= 2) perkLabels.push('프로필 테두리 강조')
-  if (level >= 3) perkLabels.push('공지 고정')
   if (level >= 4) {
     bonusReactions.push('💎')
     perkLabels.push('특수 반응 💎')
@@ -109,7 +105,6 @@ export function getRankPerks(points: number): RankPerks {
   return {
     level,
     tier,
-    canPinNotice: level >= 3,
     bonusReactions,
     perkLabels,
   }
@@ -151,7 +146,7 @@ export const TIER_PERK_SUMMARY: Record<string, string[]> = {
   '이병': ['채팅 계급 뱃지'],
   '일병': ['채팅 계급 뱃지'],
   '상병': ['채팅 계급 뱃지', '프로필 테두리 강조'],
-  '병장': ['공지 고정', '실버 말풍선'],
+  '병장': ['실버 말풍선'],
   '하사': ['특수 반응 💎', '골드 말풍선'],
   '중사': ['특수 반응 💎✨', '골드 말풍선'],
   '상사': ['특수 반응 💎✨🎖️', '엘리트 말풍선'],

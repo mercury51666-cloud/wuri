@@ -1,9 +1,8 @@
-import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import {
   getRankFromPoints,
   getWeekKey,
-  getPreviousWeekKey,
   POINTS,
 } from './rankSystem'
 import { postRankEvent } from './rankEvents'
@@ -25,14 +24,6 @@ export interface RoomRankData {
   lastLoginDate?: string
 }
 
-export interface HallEntry {
-  weekKey: string
-  type: 'mission' | 'chat' | 'overall'
-  userName: string
-  userId: string
-  value: number
-}
-
 async function maybePostPromotion(
   roomId: string,
   userId: string,
@@ -47,73 +38,6 @@ async function maybePostPromotion(
     'promotion',
     `🎉 ${userName} ${prevRankName} → ${newRankName} 임관! 축하합니다!`,
   )
-}
-
-async function processWeeklyBonus(roomId: string, currentWeek: string) {
-  const prevWeek = getPreviousWeekKey(currentWeek)
-  if (!prevWeek) return
-
-  const processedRef = doc(db, 'rooms', roomId, 'meta', `weeklyBonus_${currentWeek}`)
-  const processedSnap = await getDoc(processedRef)
-  if (processedSnap.exists()) return
-
-  const ranksSnap = await getDocs(collection(db, 'rooms', roomId, 'ranks'))
-  const prevRanks = ranksSnap.docs
-    .map((d) => d.data() as RoomRankData)
-    .filter((r) => r.weekKey === prevWeek)
-
-  if (prevRanks.length > 0) {
-    const topMission = [...prevRanks].sort((a, b) => b.weeklyMissions - a.weeklyMissions)[0]
-    const topChat = [...prevRanks].sort((a, b) => b.weeklyMessages - a.weeklyMessages)[0]
-    const bonuses: Record<string, number> = {}
-
-    if (topMission?.weeklyMissions > 0) {
-      bonuses[topMission.userId] = (bonuses[topMission.userId] ?? 0) + POINTS.WEEKLY_MISSION_TOP
-    }
-    if (topChat?.weeklyMessages > 0) {
-      bonuses[topChat.userId] = (bonuses[topChat.userId] ?? 0) + POINTS.WEEKLY_CHAT_TOP
-    }
-
-    for (const [userId, bonus] of Object.entries(bonuses)) {
-      const ref = doc(db, 'rooms', roomId, 'ranks', userId)
-      const snap = await getDoc(ref)
-      if (!snap.exists()) continue
-      const data = snap.data() as RoomRankData
-      const points = data.points + bonus
-      const rank = getRankFromPoints(points)
-      await setDoc(ref, {
-        points,
-        rankName: rank.name,
-        rankEmoji: rank.emoji,
-        weekKey: currentWeek,
-        weeklyMissions: 0,
-        weeklyMessages: 0,
-      }, { merge: true })
-    }
-
-    const hallRef = doc(db, 'rooms', roomId, 'meta', 'hallOfFame')
-    const hallSnap = await getDoc(hallRef)
-    const entries: HallEntry[] = hallSnap.exists() ? (hallSnap.data().entries ?? []) : []
-    if (topMission?.weeklyMissions) {
-      entries.unshift({ weekKey: prevWeek, type: 'mission', userName: topMission.userName, userId: topMission.userId, value: topMission.weeklyMissions })
-    }
-    if (topChat?.weeklyMessages) {
-      entries.unshift({ weekKey: prevWeek, type: 'chat', userName: topChat.userName, userId: topChat.userId, value: topChat.weeklyMessages })
-    }
-    const topOverall = [...prevRanks].sort((a, b) => b.points - a.points)[0]
-    if (topOverall) {
-      await setDoc(doc(db, 'rooms', roomId, 'meta', `weeklyChampion_${currentWeek}`), {
-        userId: topOverall.userId,
-        userName: topOverall.userName,
-        title: '🏆 계급전 우승',
-        weekKey: prevWeek,
-      }, { merge: true })
-      entries.unshift({ weekKey: prevWeek, type: 'overall', userName: topOverall.userName, userId: topOverall.userId, value: topOverall.points })
-    }
-    await setDoc(hallRef, { entries: entries.slice(0, 30) }, { merge: true })
-  }
-
-  await setDoc(processedRef, { processed: true, forWeek: prevWeek })
 }
 
 async function loadRank(roomId: string, userId: string, userName: string): Promise<RoomRankData> {
@@ -170,7 +94,6 @@ export async function awardMissionPoints(
   today: string,
   completedAllToday: boolean,
 ): Promise<{ gained: number; label: string }> {
-  await processWeeklyBonus(roomId, getWeekKey())
   const data = await loadRank(roomId, userId, userName)
   const prevRankName = data.rankName
 
@@ -198,7 +121,6 @@ export async function awardMessagePoints(
   userId: string,
   userName: string,
 ): Promise<number> {
-  await processWeeklyBonus(roomId, getWeekKey())
   const data = await loadRank(roomId, userId, userName)
   const prevRankName = data.rankName
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
-import { RANK_TIERS, getNextRank, POINTS, getWeekKey, TIER_PERK_SUMMARY, type RankTier } from '../utils/rankSystem'
+import { RANK_TIERS, getNextRank, POINTS, TIER_PERK_SUMMARY, type RankTier } from '../utils/rankSystem'
 import { RANK_FUN_POWERS } from '../utils/rankPowers'
 import type { RoomRankData } from '../utils/roomPoints'
 import RankInsignia from './RankInsignia'
@@ -14,7 +14,6 @@ interface Props {
 export default function RankBoard({ roomId }: Props) {
   const { user } = useAuthState()
   const [ranks, setRanks] = useState<RoomRankData[]>([])
-  const weekKey = getWeekKey()
 
   useEffect(() => {
     return onSnapshot(collection(db, 'rooms', roomId, 'ranks'), (snap) => {
@@ -29,9 +28,6 @@ export default function RankBoard({ roomId }: Props) {
   const progress = myRank && nextRank
     ? Math.min(100, Math.round(((myRank.points - getCurrentTier(myRank.points).min) / (nextRank.min - getCurrentTier(myRank.points).min)) * 100))
     : 0
-
-  const weeklyMissionLeader = [...ranks].sort((a, b) => b.weeklyMissions - a.weeklyMissions)[0]
-  const weeklyChatLeader = [...ranks].sort((a, b) => b.weeklyMessages - a.weeklyMessages)[0]
 
   return (
     <div className="space-y-4">
@@ -57,28 +53,6 @@ export default function RankBoard({ roomId }: Props) {
           )}
         </div>
       )}
-
-      {/* 이번 주 1등 후보 */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-2xl p-3">
-          <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-1">🎯 이번 주 미션 1등</p>
-          <p className="text-sm font-bold text-gray-800 dark:text-white truncate">
-            {weeklyMissionLeader?.weeklyMissions
-              ? `${weeklyMissionLeader.userName} (${weeklyMissionLeader.weeklyMissions}개)`
-              : '-'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">+{POINTS.WEEKLY_MISSION_TOP}점 보너스</p>
-        </div>
-        <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 rounded-2xl p-3">
-          <p className="text-xs text-violet-600 dark:text-violet-400 font-semibold mb-1">💬 이번 주 채팅 1등</p>
-          <p className="text-sm font-bold text-gray-800 dark:text-white truncate">
-            {weeklyChatLeader?.weeklyMessages
-              ? `${weeklyChatLeader.userName} (${weeklyChatLeader.weeklyMessages}개)`
-              : '-'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">+{POINTS.WEEKLY_CHAT_TOP}점 보너스</p>
-        </div>
-      </div>
 
       {/* 계급 장난 기능 */}
       <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 rounded-2xl overflow-hidden">
@@ -125,7 +99,6 @@ export default function RankBoard({ roomId }: Props) {
       <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10">
           <h3 className="font-bold text-gray-700 dark:text-gray-200 text-sm">🏅 멤버 계급 순위</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{weekKey} 주간 집계 중</p>
         </div>
         {ranks.length === 0 ? (
           <p className="text-center text-gray-400 py-8 text-sm">미션이나 채팅을 하면 계급이 올라가요!</p>

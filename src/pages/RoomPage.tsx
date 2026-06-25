@@ -33,7 +33,6 @@ import RankBadge from '../components/RankBadge'
 import ChatMemberRanks from '../components/ChatMemberRanks'
 import ChatBanners from '../components/ChatBanners'
 import PollMessage from '../components/PollMessage'
-import HallOfFame from '../components/HallOfFame'
 import { FeatureModals, ChatFeatureBar } from '../components/FeatureModals'
 import { useRoomExtras } from '../hooks/useRoomExtras'
 import { parseMentionIds, renderTextWithMentions } from '../utils/mentions'
@@ -81,7 +80,6 @@ interface Room {
   photoURL?: string
   joinCode?: string
   memberIds: string[]
-  pinnedMessageId?: string | null
 }
 
 export default function RoomPage() {
@@ -133,10 +131,6 @@ export default function RoomPage() {
 
   const REACTION_EMOJIS = useMemo(
     () => getAvailableReactions(memberRanks[user?.uid ?? '']?.points ?? 0),
-    [memberRanks, user?.uid],
-  )
-  const myRankPerks = useMemo(
-    () => getRankPerks(memberRanks[user?.uid ?? '']?.points ?? 0),
     [memberRanks, user?.uid],
   )
   const myPoints = useMemo(() => memberRanks[user?.uid ?? '']?.points ?? 0, [memberRanks, user?.uid])
@@ -258,32 +252,7 @@ export default function RoomPage() {
     if (!user || !roomId || msg.authorId !== user.uid) return
     if (!confirm('메시지를 삭제할까요?')) return
     await deleteDoc(doc(db, 'rooms', roomId, 'messages', msg.id))
-    if (room?.pinnedMessageId === msg.id) {
-      await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: null })
-    }
     setReactionTarget(null)
-  }
-
-  const pinMessage = async (msg: Message) => {
-    if (!roomId || !myRankPerks.canPinNotice) return
-    await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: msg.id })
-    setReactionTarget(null)
-  }
-
-  const unpinMessage = async () => {
-    if (!roomId) return
-    await updateDoc(doc(db, 'rooms', roomId), { pinnedMessageId: null })
-  }
-
-  const pinnedMessage = useMemo(() => {
-    if (!room?.pinnedMessageId) return null
-    return messages.find((m) => m.id === room.pinnedMessageId) ?? null
-  }, [room?.pinnedMessageId, messages])
-
-  const scrollToMessage = (msgId: string) => {
-    messageRefs.current.get(msgId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setHighlightId(msgId)
-    setTimeout(() => setHighlightId(null), 1800)
   }
 
   const searchResults = useMemo(() => {
@@ -872,31 +841,6 @@ export default function RoomPage() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {activeTab === 'chat' && (
           <>
-            {pinnedMessage && (
-              <div className="mx-4 mt-3 mb-0 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl px-3 py-2.5 flex items-start gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => scrollToMessage(pinnedMessage.id)}
-                  className="flex-1 min-w-0 text-left active:opacity-70 transition-opacity"
-                >
-                  <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-0.5">📌 공지</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
-                    <span className="font-semibold">{honorific(pinnedMessage.authorName, getMemberPoints(pinnedMessage.authorId))}</span>
-                    {' · '}
-                    {pinnedMessage.imageURL && !pinnedMessage.text
-                      ? '📷 사진'
-                      : pinnedMessage.text}
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={unpinMessage}
-                  className="text-xs text-amber-600/70 dark:text-amber-400/70 px-2 py-1 shrink-0 active:scale-95"
-                >
-                  해제
-                </button>
-              </div>
-            )}
             {room && (
               <ChatBanners meta={extras.meta} />
             )}
@@ -1054,14 +998,6 @@ export default function RoomPage() {
                               >
                                 ↩ 답장
                               </button>
-                              {myRankPerks.canPinNotice && (
-                                <button
-                                  onClick={() => pinMessage(msg)}
-                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-amber-100 dark:border-amber-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 shadow-xl active:scale-95 transition-all"
-                                >
-                                  📌 공지
-                                </button>
-                              )}
                               {!isMine && canMute(getMemberPoints(user?.uid ?? ''), authorPoints) && (
                                 <button
                                   onClick={() => handleMute(msg.authorId, msg.authorName)}
@@ -1160,7 +1096,6 @@ export default function RoomPage() {
         {activeTab === 'stats' && roomId && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <RankBoard roomId={roomId} />
-            <HallOfFame entries={extras.meta.hallOfFame} />
             <RoomStats roomId={roomId} />
           </div>
         )}

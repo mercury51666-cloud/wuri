@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import {
-  doc, collection, onSnapshot, addDoc, setDoc, updateDoc,
+  doc, collection, addDoc, setDoc, updateDoc,
   serverTimestamp, arrayUnion, arrayRemove, getDoc, getDocs,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -9,8 +9,6 @@ import { getRankLevel } from '../utils/rankSystem'
 import { birthdayKey, READ_NUDGE_MS } from '../utils/roomFeatures'
 
 export interface RoomMetaState {
-  weeklyChampion?: { userId: string; userName: string; title: string }
-  hallOfFame: { weekKey: string; type: string; userName: string; value: number }[]
   birthdays: { userId: string; name: string }[]
 }
 
@@ -23,21 +21,8 @@ export function useRoomExtras(
   messages: { id: string; authorId: string; authorName: string; text: string; createdAt: { seconds: number } | null }[],
   toast: (msg: string) => void,
 ) {
-  const [meta, setMeta] = useState<RoomMetaState>({ hallOfFame: [], birthdays: [] })
+  const [meta, setMeta] = useState<RoomMetaState>({ birthdays: [] })
   const nudgedRef = useRef<Set<string>>(new Set())
-
-  useEffect(() => {
-    if (!roomId) return
-    return onSnapshot(collection(db, 'rooms', roomId, 'meta'), (snap) => {
-      const next: RoomMetaState = { hallOfFame: [], birthdays: [] }
-      snap.docs.forEach((d) => {
-        const data = d.data()
-        if (d.id.startsWith('weeklyChampion_')) next.weeklyChampion = data as RoomMetaState['weeklyChampion']
-        if (d.id === 'hallOfFame') next.hallOfFame = (data.entries ?? []).slice(0, 10)
-      })
-      setMeta(next)
-    })
-  }, [roomId])
 
   useEffect(() => {
     if (!roomId) return
@@ -92,7 +77,7 @@ export function useRoomExtras(
           list.push({ userId: uid, name: memberProfiles[uid]?.displayName ?? '친구' })
         }
       }
-      if (!cancelled) setMeta((m) => ({ ...m, birthdays: list }))
+      if (!cancelled) setMeta({ birthdays: list })
     })()
     return () => { cancelled = true }
   }, [roomMemberIds.join(','), memberProfiles])
