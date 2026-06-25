@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { useAuthState } from './hooks/useAuthState'
+import { usePushNotifications } from './hooks/usePushNotifications'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import LoginPage from './pages/LoginPage'
@@ -33,6 +34,7 @@ function LoginRoute({ user }: { user: User | null }) {
 
 function App() {
   const { user, loading } = useAuthState()
+  usePushNotifications(user)
 
   if (loading) {
     return (

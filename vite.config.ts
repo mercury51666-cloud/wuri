@@ -1,17 +1,44 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { mkdirSync, writeFileSync } from 'fs'
+import { join } from 'path'
 
-export default defineConfig({
+function firebaseMessagingSw(mode: string): Plugin {
+  return {
+    name: 'firebase-messaging-sw',
+    config(_config, { mode: configMode }) {
+      const env = loadEnv(configMode || mode, process.cwd(), '')
+      const firebaseConfig = {
+        apiKey: env.VITE_FIREBASE_API_KEY,
+        authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: env.VITE_FIREBASE_APP_ID,
+      }
+      const content = `importScripts('https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging-compat.js');
+firebase.initializeApp(${JSON.stringify(firebaseConfig)});
+firebase.messaging();
+`
+      mkdirSync('public', { recursive: true })
+      writeFileSync(join('public', 'firebase-messaging-sw.js'), content)
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => ({
   plugins: [
+    firebaseMessagingSw(mode),
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      selfDestroying: true,
-      includeAssets: ['favicon.svg', 'icons/*.png'],
+      selfDestroying: false,
+      includeAssets: ['favicon.svg', 'icons/*.png', 'firebase-messaging-sw.js'],
       manifest: {
         name: 'WURI — 우리만의 공간',
         short_name: 'WURI',
@@ -39,4 +66,4 @@ export default defineConfig({
       },
     }),
   ],
-})
+}))

@@ -22,6 +22,7 @@ import { countUnreadMessages, toMs } from '../hooks/useReadStatus'
 import ProfileModal from '../components/ProfileModal'
 import OnboardingModal from '../components/OnboardingModal'
 import InstallBanner from '../components/InstallBanner'
+import PushNotificationBanner from '../components/PushNotificationBanner'
 import RoomAvatar from '../components/RoomAvatar'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
@@ -237,6 +238,7 @@ export default function HomePage() {
 
       <main className="max-w-md mx-auto px-5 pt-5 pb-8 space-y-5">
         <InstallBanner />
+        {user && <PushNotificationBanner userId={user.uid} />}
         <div>
           <p className="text-sm text-[var(--text-secondary)]">안녕하세요</p>
           <p className="text-lg font-bold text-[var(--text)] mt-0.5">{user?.displayName || '친구'}님</p>
