@@ -1186,7 +1186,6 @@ export default function RoomPage() {
               <ChatFeatureBar
                 onPoll={() => setFeatureModal('poll')}
                 onSchedule={() => setFeatureModal('schedule')}
-                onRebellion={extras.handleRebellion}
               />
               {typingUsers.length > 0 && (
                 <div className="px-4 pt-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">

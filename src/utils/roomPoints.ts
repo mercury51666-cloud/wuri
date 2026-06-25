@@ -7,7 +7,6 @@ import {
   POINTS,
 } from './rankSystem'
 import { postRankEvent } from './rankEvents'
-import { GROUP_MISSION_GOAL } from './roomFeatures'
 
 export interface RoomRankData {
   userId: string
@@ -32,23 +31,6 @@ export interface HallEntry {
   userName: string
   userId: string
   value: number
-}
-
-async function incrementGroupMission(roomId: string, userId: string, userName: string) {
-  const weekKey = getWeekKey()
-  const ref = doc(db, 'rooms', roomId, 'meta', `groupMission_${weekKey}`)
-  const snap = await getDoc(ref)
-  const prev = snap.data()?.total ?? 0
-  const total = prev + 1
-  await setDoc(ref, { total, goal: GROUP_MISSION_GOAL, weekKey }, { merge: true })
-  if (prev < GROUP_MISSION_GOAL && total >= GROUP_MISSION_GOAL) {
-    await postRankEvent(
-      roomId,
-      { uid: userId, name: userName },
-      'group_goal',
-      `🎯 단체 미션 달성! 이번 주 미션 ${GROUP_MISSION_GOAL}개 돌파!`,
-    )
-  }
 }
 
 async function maybePostPromotion(
@@ -234,7 +216,6 @@ export async function awardMissionPoints(
   data.rankEmoji = rank.emoji
   await saveRank(roomId, data)
   await maybePostPromotion(roomId, userId, userName, prevRankName, rank.name)
-  await incrementGroupMission(roomId, userId, userName)
 
   return { gained, label: `${rank.name}` }
 }
@@ -261,25 +242,4 @@ export async function awardMessagePoints(
   await maybePostPromotion(roomId, userId, userName, prevRankName, rank.name)
 
   return POINTS.MESSAGE
-}
-
-export async function updateDailyMvpMeta(
-  roomId: string,
-  ranks: Record<string, RoomRankData>,
-) {
-  const today = new Date().toISOString().slice(0, 10)
-  const ref = doc(db, 'rooms', roomId, 'meta', `mvp_${today}`)
-  const snap = await getDoc(ref)
-  if (snap.exists()) return
-
-  let best: { userId: string; userName: string; score: number } | null = null
-  for (const r of Object.values(ranks)) {
-    const score = r.todayMessageCount + (r.todayDate === today ? r.weeklyMissions : 0)
-    if (score > 0 && (!best || score > best.score)) {
-      best = { userId: r.userId, userName: r.userName, score }
-    }
-  }
-  if (best) {
-    await setDoc(ref, { ...best, date: today }, { merge: true })
-  }
 }

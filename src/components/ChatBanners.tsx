@@ -8,13 +8,6 @@ interface Props {
 export default function ChatBanners({ meta, loginStreak }: Props) {
   const items: { icon: string; text: string; cls: string }[] = []
 
-  if (meta.mvp) {
-    items.push({
-      icon: '👑',
-      text: `오늘의 MVP ${meta.mvp.userName} (${meta.mvp.score}점)`,
-      cls: 'banner-mvp',
-    })
-  }
   if (meta.weeklyChampion) {
     items.push({
       icon: '🏆',
@@ -27,14 +20,6 @@ export default function ChatBanners({ meta, loginStreak }: Props) {
       icon: '🎂',
       text: `생일 축하 ${meta.birthdays.map((b) => b.name).join(', ')}님!`,
       cls: 'banner-birthday',
-    })
-  }
-  if (meta.groupMission) {
-    const { total, goal } = meta.groupMission
-    items.push({
-      icon: '🎯',
-      text: `단체 미션 ${total}/${goal}${total >= goal ? ' 달성!' : ''}`,
-      cls: 'banner-group',
     })
   }
   if (meta.roomTheme && meta.roomTheme.until > Date.now()) {

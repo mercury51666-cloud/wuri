@@ -5,22 +5,17 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import type { User } from 'firebase/auth'
-import { postRankEvent } from '../utils/rankEvents'
-import { getRankName } from '../utils/rankPowers'
 import { getRankLevel } from '../utils/rankSystem'
-import { recordLoginStreak, updateDailyMvpMeta, setEquippedTitle } from '../utils/roomPoints'
+import { recordLoginStreak, setEquippedTitle } from '../utils/roomPoints'
 import type { RoomRankData } from '../utils/roomPoints'
 import {
-  todayKey, birthdayKey, READ_NUDGE_MS, ROOM_THEMES, findLowestRankMembers,
+  birthdayKey, READ_NUDGE_MS, ROOM_THEMES,
 } from '../utils/roomFeatures'
 
-const REBELLION_MS = 3_000
 const THEME_MS = 60 * 60 * 1000
 
 export interface RoomMetaState {
-  mvp?: { userId: string; userName: string; score: number }
   weeklyChampion?: { userId: string; userName: string; title: string }
-  groupMission?: { total: number; goal: number }
   roomTheme?: { accent: string; until: number; byUserName: string }
   hallOfFame: { weekKey: string; type: string; userName: string; value: number }[]
   birthdays: { userId: string; name: string }[]
@@ -42,14 +37,11 @@ export function useRoomExtras(
 
   useEffect(() => {
     if (!roomId) return
-    const today = todayKey()
     return onSnapshot(collection(db, 'rooms', roomId, 'meta'), (snap) => {
       const next: RoomMetaState = { hallOfFame: [], birthdays: [] }
       snap.docs.forEach((d) => {
         const data = d.data()
-        if (d.id === `mvp_${today}`) next.mvp = data as RoomMetaState['mvp']
         if (d.id.startsWith('weeklyChampion_')) next.weeklyChampion = data as RoomMetaState['weeklyChampion']
-        if (d.id.startsWith('groupMission_')) next.groupMission = data as RoomMetaState['groupMission']
         if (d.id === 'roomTheme') next.roomTheme = data as RoomMetaState['roomTheme']
         if (d.id === 'hallOfFame') next.hallOfFame = (data.entries ?? []).slice(0, 10)
       })
@@ -61,11 +53,6 @@ export function useRoomExtras(
     if (!roomId || !user || !roomMemberIds.includes(user.uid)) return
     recordLoginStreak(roomId, user.uid, user.displayName || '친구').then(setLoginStreak).catch(() => {})
   }, [roomId, user?.uid, roomMemberIds.join(',')])
-
-  useEffect(() => {
-    if (!roomId || Object.keys(memberRanks).length === 0) return
-    updateDailyMvpMeta(roomId, memberRanks).catch(() => {})
-  }, [roomId, memberRanks])
 
   useEffect(() => {
     if (!roomId) return
@@ -125,48 +112,9 @@ export function useRoomExtras(
     return () => { cancelled = true }
   }, [roomMemberIds.join(','), memberProfiles])
 
-  const getPoints = (uid: string) => memberRanks[uid]?.points ?? 0
-
-  const handleRebellion = useCallback(async () => {
-    if (!user || !roomId || !roomMemberIds.length) return
-    const lowest = findLowestRankMembers(roomMemberIds, memberRanks)
-    if (!lowest.includes(user.uid)) {
-      toast('최하위 계급만 이병 반란을 쓸 수 있어요')
-      return
-    }
-    const usedRef = doc(db, 'rooms', roomId, 'meta', `rebellion_${todayKey()}_${user.uid}`)
-    const used = await getDoc(usedRef)
-    if (used.exists()) {
-      toast('오늘은 이미 반란을 썼어요')
-      return
-    }
-    try {
-      await Promise.all(
-        roomMemberIds
-          .filter((id) => id !== user.uid)
-          .map((id) => setDoc(doc(db, 'rooms', roomId, 'mutes', id), {
-            byUserId: user.uid,
-            byUserName: user.displayName || '친구',
-            byRankName: getRankName(getPoints(user.uid)),
-            until: Date.now() + REBELLION_MS,
-          })),
-      )
-      await postRankEvent(
-        roomId,
-        { uid: user.uid, name: user.displayName || '친구', photoURL: user.photoURL },
-        'rebellion',
-        `⚡ ${user.displayName} 이병 반란! 전원 3초 벙어리!`,
-      )
-      await setDoc(usedRef, { used: true })
-      toast('이병 반란! ⚡')
-    } catch {
-      toast('반란 실패…')
-    }
-  }, [user, roomId, roomMemberIds, memberRanks, toast])
-
   const setRoomTheme = useCallback(async (accent: string) => {
     if (!user || !roomId) return
-    if (getRankLevel(getPoints(user.uid)) < 6) {
+    if (getRankLevel(memberRanks[user.uid]?.points ?? 0) < 6) {
       toast('상사만 방 테마를 바꿀 수 있어요')
       return
     }
@@ -252,7 +200,6 @@ export function useRoomExtras(
     meta,
     loginStreak,
     themeAccent,
-    handleRebellion,
     setRoomTheme,
     saveTitle,
     saveBirthday,

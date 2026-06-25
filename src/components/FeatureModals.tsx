@@ -84,16 +84,14 @@ export function FeatureModals({
   )
 }
 
-export function ChatFeatureBar({ onPoll, onSchedule, onRebellion }: {
+export function ChatFeatureBar({ onPoll, onSchedule }: {
   onPoll: () => void
   onSchedule: () => void
-  onRebellion: () => void
 }) {
   return (
     <div className="flex gap-1 px-3 pt-1.5 overflow-x-auto scrollbar-hide">
       <button type="button" onClick={onPoll} className="shrink-0 px-2.5 py-1 rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--text-secondary)]">📊 투표</button>
       <button type="button" onClick={onSchedule} className="shrink-0 px-2.5 py-1 rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--text-secondary)]">⏰ 예약</button>
-      <button type="button" onClick={onRebellion} className="shrink-0 px-2.5 py-1 rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--text-secondary)]">⚡ 이병반란</button>
     </div>
   )
 }
