@@ -9,7 +9,6 @@ import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useMessageNotifications } from '../hooks/useNotifications'
 import { countUnreadByOthers } from '../hooks/useReadStatus'
-import Mascot from '../components/Mascot'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
 import RankBoard from '../components/RankBoard'
@@ -23,6 +22,9 @@ import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 import { awardMessagePoints } from '../utils/roomPoints'
 import type { RoomRankData } from '../utils/roomPoints'
+import RoomBottomNav, { TAB_TITLES, MORE_SUB_TABS, type RoomTab, type PrimaryTab, type MoreSubTab } from '../components/RoomBottomNav'
+import RoomMorePanel from '../components/RoomMorePanel'
+import { ChevronLeft, Search } from 'lucide-react'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
@@ -55,19 +57,6 @@ interface Room {
   pinnedMessageId?: string | null
 }
 
-type Tab = 'chat' | 'gallery' | 'mascot' | 'mission' | 'location' | 'stats' | 'mood' | 'schedule'
-
-const TABS: { id: Tab; emoji: string; label: string }[] = [
-  { id: 'chat',     emoji: '💬', label: '채팅' },
-  { id: 'gallery',  emoji: '🖼️', label: '사진' },
-  { id: 'schedule', emoji: '📅', label: '일정' },
-  { id: 'mood',     emoji: '😊', label: '기분' },
-  { id: 'mascot',   emoji: '🐾', label: '마스코트' },
-  { id: 'mission',  emoji: '🎯', label: '미션' },
-  { id: 'location', emoji: '📍', label: '위치' },
-  { id: 'stats',    emoji: '🎖️', label: '계급' },
-]
-
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const { user } = useAuthState()
@@ -88,10 +77,9 @@ export default function RoomPage() {
   const [renaming, setRenaming] = useState(false)
   const [changingPhoto, setChangingPhoto] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
-  const [activeTab, setActiveTab] = useState<Tab>('chat')
+  const [activeTab, setActiveTab] = useState<RoomTab>('chat')
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const [replyTarget, setReplyTarget] = useState<Message | null>(null)
   const [showSearch, setShowSearch] = useState(false)
@@ -403,7 +391,6 @@ export default function RoomPage() {
     try {
       const photoURL = await uploadToCloudinary(file)
       await updateDoc(doc(db, 'rooms', roomId), { photoURL })
-      setShowMenu(false)
     } catch {
       alert('방 사진 변경에 실패했어요. 다시 시도해주세요.')
     } finally {
@@ -467,8 +454,18 @@ export default function RoomPage() {
   const openRename = () => {
     setRenameValue(room?.name ?? '')
     setShowRename(true)
-    setShowMenu(false)
   }
+
+  const handlePrimaryTab = (tab: PrimaryTab) => {
+    setActiveTab(tab)
+  }
+
+  const handleMoreSubTab = (tab: MoreSubTab) => {
+    setActiveTab(tab)
+  }
+
+  const headerTitle = activeTab === 'chat' ? room?.name ?? '채팅' : TAB_TITLES[activeTab]
+  const showBackToMore = MORE_SUB_TABS.includes(activeTab as typeof MORE_SUB_TABS[number])
 
   const renameRoom = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -527,7 +524,7 @@ export default function RoomPage() {
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div className="page-enter h-full bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto overflow-hidden">
+    <div className="page-enter h-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden">
       {viewingPhoto && (
         <div
           className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4"
@@ -567,117 +564,8 @@ export default function RoomPage() {
         </div>
       )}
 
-      {/* 햄버거 사이드 메뉴 */}
-      {showMenu && (
-        <div className="fixed inset-0 z-[2000] flex">
-          <div
-            className="menu-enter w-64 h-full bg-white dark:bg-[#111] border-r border-gray-100 dark:border-white/10 flex flex-col shadow-2xl"
-            style={{
-              paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)',
-              paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
-              paddingLeft: '1rem',
-              paddingRight: '1rem',
-            }}
-          >
-            <div className="flex items-center gap-3 mb-4 px-2 shrink-0">
-              <RoomAvatar photoURL={room.photoURL} emoji={room.emoji} name={room.name} className="w-10 h-10" />
-              <div>
-                <p className="font-bold text-gray-800 dark:text-white text-sm">{room.name}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">멤버 {room.memberIds.length}명</p>
-                {room.joinCode && (
-                  <p className="text-xs text-violet-500 dark:text-violet-400 font-mono tracking-wider mt-0.5">🔑 {room.joinCode}</p>
-                )}
-                {user && memberRanks[user.uid] && (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                    {memberRanks[user.uid].rankEmoji} {memberRanks[user.uid].rankName} · {memberRanks[user.uid].points}점
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 -mx-1 px-1">
-              {TABS.map((tab) => (
-                <button key={tab.id}
-                  onClick={() => { setActiveTab(tab.id); setShowMenu(false) }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors text-left shrink-0 ${
-                    activeTab === tab.id
-                      ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400'
-                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'
-                  }`}
-                >
-                  <span className="text-lg">{tab.emoji}</span>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-
-              {/* 멤버 목록 */}
-              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
-                <p className="text-xs font-semibold text-gray-400 dark:text-gray-600 px-2 mb-2 tracking-widest uppercase">멤버</p>
-                <div className="space-y-1">
-                  {room.memberIds.map((uid) => {
-                    const profile = memberProfiles[uid]
-                    const isMe = uid === user?.uid
-                    return (
-                      <div key={uid} className="flex items-center gap-3 px-2 py-2 rounded-xl">
-                        <div
-                          className="w-8 h-8 rounded-full overflow-hidden bg-violet-100 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-300 shrink-0 cursor-pointer active:scale-90 transition-transform"
-                          onClick={() => profile && setViewingProfile({ name: profile.displayName, photoURL: profile.photoURL ?? undefined })}
-                        >
-                          {profile?.photoURL
-                            ? <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
-                            : (profile?.displayName ?? '?')[0]
-                          }
-                        </div>
-                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                          {profile?.displayName ?? '불러오는 중...'}
-                          {isMe && <span className="text-xs text-violet-400 ml-1">(나)</span>}
-                        </span>
-                        {memberRanks[uid] && (
-                          <span className="text-xs text-emerald-600 dark:text-emerald-400 shrink-0">
-                            {memberRanks[uid].rankEmoji}{memberRanks[uid].rankName}
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="shrink-0 flex flex-col gap-2 pt-4 mt-2 border-t border-gray-100 dark:border-white/10">
-              {isJoined && (
-                <>
-                  <button onClick={openRename} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                    <span>✏️</span><span>방 이름 변경</span>
-                  </button>
-                  <button
-                    onClick={() => roomPhotoInputRef.current?.click()}
-                    disabled={changingPhoto}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
-                  >
-                    <span>🖼️</span><span>{changingPhoto ? '사진 변경 중...' : '방 사진 변경'}</span>
-                  </button>
-                </>
-              )}
-              <button onClick={() => { setShowInvite(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                <span>🔗</span><span>친구 초대</span>
-              </button>
-              <button onClick={toggleDark} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                <span>{dark ? '☀️' : '🌙'}</span><span>{dark ? '라이트 모드' : '다크 모드'}</span>
-              </button>
-              {isJoined && (
-                <button onClick={() => { setShowLeave(true); setShowMenu(false) }} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                  <span>🚪</span><span>방 나가기</span>
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={() => setShowMenu(false)} />
-        </div>
-      )}
-
       {/* 헤더 */}
-      <header className="safe-top bg-white/90 dark:bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100 dark:border-white/10 shadow-sm dark:shadow-none">
+      <header className="app-header safe-top sticky top-0 z-10 shrink-0">
         {showSearch && activeTab === 'chat' ? (
           <div className="px-3 py-2.5 flex items-center gap-2">
             <input
@@ -686,60 +574,38 @@ export default function RoomPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="메시지 검색..."
-              className="flex-1 min-w-0 bg-gray-100 dark:bg-white/10 rounded-xl px-3 py-2 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400"
-              style={{ fontSize: '16px' }}
+              className="input-field flex-1 min-w-0 py-2"
             />
             {searchResults.length > 0 && (
-              <span className="text-[11px] text-gray-400 shrink-0 tabular-nums">
+              <span className="text-[11px] text-[var(--text-muted)] shrink-0 tabular-nums">
                 {searchIdx + 1}/{searchResults.length}
               </span>
             )}
-            <button
-              type="button"
-              disabled={searchResults.length === 0}
-              onClick={() => setSearchIdx((i) => (i - 1 + searchResults.length) % searchResults.length)}
-              className="w-8 h-8 rounded-lg text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-30"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              disabled={searchResults.length === 0}
-              onClick={() => setSearchIdx((i) => (i + 1) % searchResults.length)}
-              className="w-8 h-8 rounded-lg text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-30"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              onClick={closeSearch}
-              className="text-sm text-violet-500 dark:text-violet-400 font-medium px-2 shrink-0"
-            >
-              취소
-            </button>
+            <button type="button" disabled={searchResults.length === 0} onClick={() => setSearchIdx((i) => (i - 1 + searchResults.length) % searchResults.length)} className="icon-btn disabled:opacity-30">↑</button>
+            <button type="button" disabled={searchResults.length === 0} onClick={() => setSearchIdx((i) => (i + 1) % searchResults.length)} className="icon-btn disabled:opacity-30">↓</button>
+            <button type="button" onClick={closeSearch} className="text-sm text-[var(--brand)] font-semibold px-2 shrink-0">취소</button>
           </div>
         ) : (
-          <div className="px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setShowMenu(true)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors shrink-0">
-              <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
-              <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
-              <span className="w-5 h-0.5 bg-gray-600 dark:bg-gray-400 rounded-full" />
+          <div className="px-3 py-2.5 flex items-center gap-2">
+            <button type="button" onClick={() => showBackToMore ? setActiveTab('more') : navigate('/')} className="icon-btn shrink-0">
+              <ChevronLeft size={22} />
             </button>
+            {activeTab === 'chat' && (
+              <RoomAvatar photoURL={room.photoURL} emoji={room.emoji} name={room.name} className="w-9 h-9 shrink-0" />
+            )}
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-800 dark:text-white truncate">
-                {TABS.find(t => t.id === activeTab)?.emoji} {TABS.find(t => t.id === activeTab)?.label}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">{room.name}</p>
+              <p className="font-bold text-[var(--text)] truncate text-[15px]">{headerTitle}</p>
+              {activeTab === 'chat' && memberRanks[user?.uid ?? ''] && (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 truncate">
+                  {memberRanks[user!.uid].rankEmoji} {memberRanks[user!.uid].rankName}
+                </p>
+              )}
             </div>
             {activeTab === 'chat' && (
-              <button
-                onClick={() => setShowSearch(true)}
-                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-lg px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-              >
-                🔍
+              <button type="button" onClick={() => setShowSearch(true)} className="icon-btn shrink-0">
+                <Search size={20} />
               </button>
             )}
-            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">홈</button>
           </div>
         )}
       </header>
@@ -873,7 +739,7 @@ export default function RoomPage() {
                             className={`relative cursor-pointer select-none max-w-full ${
                               msg.imageURL && !msg.replyTo && !msg.text
                                 ? 'rounded-2xl overflow-hidden'
-                                : `rounded-2xl text-sm px-3 py-2.5 ${isMine ? 'bg-violet-500 dark:bg-violet-600 text-white rounded-tr-sm' : 'bg-white dark:bg-white/10 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 shadow-sm rounded-tl-sm'}`
+                                : `text-sm px-3.5 py-2.5 ${isMine ? 'chat-bubble-mine' : 'chat-bubble-other'}`
                             }`}
                             onContextMenu={(e) => { e.preventDefault(); setReactionTarget(reactionTarget === msg.id ? null : msg.id) }}
                             onTouchStart={() => {
@@ -965,7 +831,7 @@ export default function RoomPage() {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="border-t border-gray-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md safe-bottom">
+            <div className="border-t border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md safe-bottom shrink-0">
               {typingUsers.length > 0 && (
                 <div className="px-4 pt-2 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
                   <span className="flex gap-0.5">
@@ -997,19 +863,18 @@ export default function RoomPage() {
                   </button>
                 </div>
               )}
-              <form onSubmit={sendMessage} className="flex items-center gap-2 px-4 py-3">
-                <label className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 active:scale-90 flex items-center justify-center shrink-0 cursor-pointer transition-all">
+              <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2.5">
+                <label className="icon-btn shrink-0 cursor-pointer">
                   <span className="text-lg">🖼️</span>
                   <input type="file" accept="image/*" className="hidden" disabled={sending}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
                   />
                 </label>
                 <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }} placeholder="메시지 보내기..."
-                  className="flex-1 bg-gray-100 dark:bg-white/10 border border-transparent dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
-                  style={{ fontSize: '16px' }}
+                  className="input-field flex-1 py-2.5"
                 />
                 <button type="submit" disabled={sending || !text.trim()}
-                  className="w-10 h-10 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
+                  className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
                 >{sending ? '⏳' : '→'}</button>
               </form>
             </div>
@@ -1024,7 +889,23 @@ export default function RoomPage() {
 
         {activeTab === 'mood' && roomId && <div className="flex-1 overflow-y-auto p-4"><MoodBoard roomId={roomId} /></div>}
         {activeTab === 'schedule' && roomId && <div className="flex-1 overflow-y-auto p-4"><ScheduleCalendar roomId={roomId} /></div>}
-        {activeTab === 'mascot' && roomId && <div className="flex-1 overflow-y-auto p-4"><Mascot roomId={roomId} totalMessages={messages.length} /></div>}
+        {activeTab === 'more' && (
+          <RoomMorePanel
+            room={room}
+            dark={dark}
+            isJoined={!!isJoined}
+            changingPhoto={changingPhoto}
+            memberRanks={memberRanks}
+            memberProfiles={memberProfiles}
+            onSelectTab={handleMoreSubTab}
+            onInvite={() => setShowInvite(true)}
+            onRename={openRename}
+            onChangePhoto={() => roomPhotoInputRef.current?.click()}
+            onToggleDark={toggleDark}
+            onLeave={() => setShowLeave(true)}
+            onViewProfile={(name, photoURL) => setViewingProfile({ name, photoURL })}
+          />
+        )}
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
         {/* 위치는 탭 전환 시에도 계속 추적하기 위해 숨김 처리 방식 사용 */}
         {roomId && <div className={`flex-1 overflow-y-auto p-4 ${activeTab !== 'location' ? 'hidden' : ''}`}><LocationMap roomId={roomId} visible={activeTab === 'location'} /></div>}
@@ -1036,6 +917,8 @@ export default function RoomPage() {
         )}
       </div>
       )}
+
+      {isJoined && <RoomBottomNav activeTab={activeTab} onChange={handlePrimaryTab} />}
 
       {showRename && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">

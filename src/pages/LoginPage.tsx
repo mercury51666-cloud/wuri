@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from '../firebase'
+import { Link2 } from 'lucide-react'
 
 function isInAppBrowser() {
   const ua = navigator.userAgent
@@ -29,50 +30,48 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="page-enter safe-top min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
-      <div className="absolute w-72 h-72 rounded-full bg-violet-400 opacity-10 dark:opacity-20 blur-3xl top-1/4 left-1/2 -translate-x-1/2 pointer-events-none" />
-
-      <div className="relative w-full max-w-sm flex flex-col items-center gap-10">
-        {/* 로고 */}
+    <div className="page-enter app-shell safe-top min-h-screen flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="text-center">
-          <h1 className="text-7xl font-black tracking-tighter text-violet-700 dark:text-white" style={{ letterSpacing: '-0.04em' }}>
-            WU<span className="text-violet-400">RI</span>
+          <h1 className="text-6xl font-black tracking-tighter text-[var(--text)]">
+            WU<span className="text-[var(--brand)]">RI</span>
           </h1>
-          <p className="text-gray-400 mt-3 text-sm tracking-widest uppercase">친구들과 함께하는 공간</p>
+          <p className="text-[var(--text-secondary)] mt-3 text-sm">친구들과 함께하는 공간</p>
         </div>
 
-        {/* 카드 */}
-        <div className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 shadow-xl dark:shadow-none backdrop-blur-md rounded-3xl p-8">
+        <div className="card w-full p-8">
           {inApp ? (
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-14 h-14 bg-amber-100 dark:bg-amber-500/10 rounded-2xl flex items-center justify-center text-3xl">⚠️</div>
+              <div className="w-14 h-14 bg-amber-500/10 rounded-[var(--radius-xl)] flex items-center justify-center text-2xl">⚠️</div>
               <div>
-                <p className="font-bold text-gray-800 dark:text-white text-base mb-1">앱 내 브라우저에서는 로그인이 안 돼요</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Google 보안 정책으로 카카오, 인스타, 메신저 등<br/>앱 안에서는 로그인이 차단돼요.<br/>
-                  <span className="font-semibold text-violet-500">Safari 또는 Chrome</span>으로 열어주세요.
+                <p className="font-bold text-[var(--text)] text-base mb-2">앱 내 브라우저에서는 로그인이 안 돼요</p>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  Google 보안 정책으로 카카오, 인스타 등<br />앱 안에서는 로그인이 차단돼요.<br />
+                  <span className="font-semibold text-[var(--brand)]">Safari 또는 Chrome</span>으로 열어주세요.
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href).then(() => {
                     setCopied(true)
                     setTimeout(() => setCopied(false), 2500)
                   })
                 }}
-                className="w-full bg-violet-500 hover:bg-violet-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-2xl transition-all text-sm"
+                className="btn btn-primary w-full"
               >
-                {copied ? '✅ 링크 복사됨!' : '🔗 링크 복사하기'}
+                <Link2 size={18} />
+                {copied ? '링크 복사됨!' : '링크 복사하기'}
               </button>
-              <p className="text-xs text-gray-400 dark:text-gray-600">복사 후 Safari/Chrome 주소창에 붙여넣기 하세요</p>
             </div>
           ) : (
             <>
-              <p className="text-center text-sm text-gray-400 mb-6">구글 계정으로 간편하게 로그인해요</p>
+              <p className="text-center text-sm text-[var(--text-secondary)] mb-6">구글 계정으로 간편하게 시작해요</p>
               <button
+                type="button"
                 onClick={handleGoogle}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 dark:bg-white dark:hover:bg-gray-100 text-gray-800 font-bold py-4 rounded-2xl transition-all shadow-sm disabled:opacity-50 border border-gray-200 dark:border-transparent active:scale-[0.98]"
+                className="btn btn-secondary w-full py-4 bg-[var(--surface)]"
               >
                 <svg width="20" height="20" viewBox="0 0 48 48">
                   <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -82,7 +81,7 @@ export default function LoginPage() {
                 </svg>
                 {loading ? '로그인 중...' : 'Google로 시작하기'}
               </button>
-              {error && <p className="mt-4 text-red-500 dark:text-red-400 text-sm text-center">{error}</p>}
+              {error && <p className="mt-4 text-[var(--danger)] text-sm text-center">{error}</p>}
             </>
           )}
         </div>

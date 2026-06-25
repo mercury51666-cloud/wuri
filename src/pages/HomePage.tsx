@@ -25,6 +25,8 @@ import InstallBanner from '../components/InstallBanner'
 import RoomAvatar from '../components/RoomAvatar'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
+import { useToast } from '../contexts/ToastContext'
+import { Plus, KeyRound, ChevronRight, Moon, Sun, LogOut } from 'lucide-react'
 
 interface Room {
   id: string
@@ -38,6 +40,7 @@ interface Room {
 export default function HomePage() {
   const { user } = useAuthState()
   const { dark, toggleDark } = useTheme()
+  const { toast } = useToast()
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [loadingRooms, setLoadingRooms] = useState(true)
@@ -164,7 +167,7 @@ export default function HomePage() {
       resetCreateForm()
       navigate(`/room/${docRef.id}`)
     } catch {
-      alert('방 만들기에 실패했어요. 다시 시도해주세요.')
+      toast('방 만들기에 실패했어요')
     } finally {
       setCreating(false)
     }
@@ -203,7 +206,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="page-enter min-h-screen bg-gradient-to-br from-violet-50 via-pink-50 to-orange-50 dark:bg-[#0d0d0d] dark:bg-none">
+    <div className="page-enter app-shell min-h-screen">
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {showOnboarding && (
         <OnboardingModal onDone={() => {
@@ -211,106 +214,98 @@ export default function HomePage() {
           setShowOnboarding(false)
         }} />
       )}
-      <div className="absolute w-72 h-72 rounded-full bg-violet-400 opacity-10 dark:opacity-10 blur-3xl top-0 left-1/2 -translate-x-1/2 pointer-events-none" />
 
-      {/* 헤더 */}
-      <header className="safe-top relative sticky top-0 z-10 px-4 py-4 flex items-center justify-between border-b border-violet-100 dark:border-white/10 bg-white/80 dark:bg-[#0d0d0d]/80 backdrop-blur-md">
-        <h1 className="text-xl font-black text-violet-700 dark:text-white tracking-tight">
-          WU<span className="text-violet-400">RI</span>
+      <header className="app-header safe-top sticky top-0 z-10 px-5 py-3.5 flex items-center justify-between">
+        <h1 className="text-lg font-black tracking-tight text-[var(--text)]">
+          WU<span className="text-[var(--brand)]">RI</span>
         </h1>
-        <div className="flex items-center gap-2">
-          <button onClick={toggleDark} className="text-lg px-1">{dark ? '☀️' : '🌙'}</button>
-          <button
-            onClick={() => setShowProfile(true)}
-            className="w-9 h-9 rounded-full overflow-hidden border-2 border-violet-400 dark:border-violet-500 flex-shrink-0 bg-gradient-to-br from-violet-400 to-pink-400 flex items-center justify-center"
-          >
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={toggleDark} className="icon-btn" aria-label="테마">
+            {dark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button type="button" onClick={() => setShowProfile(true)} className="w-9 h-9 rounded-full overflow-hidden border-2 border-[var(--brand)] ml-1">
             {user?.photoURL
-              ? <img src={user.photoURL} alt="프로필" className="w-full h-full object-cover" />
-              : <span className="text-white text-xs font-bold">{(user?.displayName ?? user?.email ?? '?').slice(0, 2).toUpperCase()}</span>
+              ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+              : <span className="w-full h-full flex items-center justify-center bg-[var(--brand)] text-white text-xs font-bold">{(user?.displayName ?? '?').slice(0, 2).toUpperCase()}</span>
             }
           </button>
-          <button
-            onClick={() => signOut(auth)}
-            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-          >
-            로그아웃
+          <button type="button" onClick={() => signOut(auth)} className="icon-btn ml-0.5" aria-label="로그아웃">
+            <LogOut size={18} />
           </button>
         </div>
       </header>
 
-      <main className="relative max-w-md mx-auto pt-4 pb-6 px-5 space-y-4">
+      <main className="max-w-md mx-auto px-5 pt-5 pb-8 space-y-5">
         <InstallBanner />
-        <p className="text-gray-500 text-sm">안녕하세요, <span className="text-violet-500 dark:text-violet-400 font-medium">{user?.displayName || '친구'}</span>님</p>
+        <div>
+          <p className="text-sm text-[var(--text-secondary)]">안녕하세요</p>
+          <p className="text-lg font-bold text-[var(--text)] mt-0.5">{user?.displayName || '친구'}님</p>
+        </div>
 
-        <button
-          onClick={() => setShowCreate(true)}
-          className="w-full bg-violet-500 hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-500 active:scale-[0.98] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-violet-200 dark:shadow-none"
-        >
-          <span className="text-xl">+</span>
-          <span>새 방 만들기</span>
-        </button>
-
-        <button
-          onClick={() => { resetJoinForm(); setShowJoinByCode(true) }}
-          className="w-full bg-white dark:bg-white/5 border border-violet-200 dark:border-white/10 hover:bg-violet-50 dark:hover:bg-white/10 active:scale-[0.98] text-violet-600 dark:text-violet-400 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all"
-        >
-          <span className="text-xl">🔑</span>
-          <span>비밀번호로 참여</span>
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setShowCreate(true)} className="btn btn-primary col-span-2 py-4 rounded-[var(--radius-xl)] shadow-[var(--shadow-card)]">
+            <Plus size={20} />
+            새 방 만들기
+          </button>
+          <button type="button" onClick={() => { resetJoinForm(); setShowJoinByCode(true) }} className="btn btn-secondary col-span-2 py-4 rounded-[var(--radius-xl)] text-[var(--brand)] border-[var(--brand-soft)] bg-[var(--brand-soft)]">
+            <KeyRound size={18} />
+            비밀번호로 참여
+          </button>
+        </div>
 
         {loadingRooms ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-pulse">
-                <div className="w-12 h-12 bg-gray-200 dark:bg-white/10 rounded-xl" />
+              <div key={i} className="card p-4 flex items-center gap-4">
+                <div className="w-12 h-12 skeleton rounded-[var(--radius-lg)]" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-white/10 rounded-lg w-1/2" />
-                  <div className="h-3 bg-gray-100 dark:bg-white/5 rounded-lg w-1/4" />
+                  <div className="h-4 skeleton rounded-lg w-1/2" />
+                  <div className="h-3 skeleton rounded-lg w-1/4" />
                 </div>
               </div>
             ))}
           </div>
         ) : rooms.length === 0 ? (
-          <div className="text-center py-20 flex flex-col items-center gap-3">
-            <div className="w-20 h-20 rounded-3xl bg-violet-100 dark:bg-violet-500/10 flex items-center justify-center text-4xl mb-1">🏡</div>
-            <p className="font-bold text-gray-600 dark:text-gray-300 text-lg">아직 방이 없어요</p>
-            <p className="text-sm text-gray-400 dark:text-gray-600 leading-relaxed">
-              새 방을 만들거나<br/>비밀번호·초대 링크로 친구 방에 참여해보세요
+          <div className="card py-16 px-6 text-center">
+            <div className="w-16 h-16 mx-auto rounded-[var(--radius-xl)] bg-[var(--brand-soft)] flex items-center justify-center mb-4">
+              <Plus size={28} className="text-[var(--brand)]" />
+            </div>
+            <p className="font-bold text-[var(--text)] text-lg">아직 방이 없어요</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">
+              새 방을 만들거나 비밀번호로<br />친구 방에 참여해보세요
             </p>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="mt-2 text-violet-500 dark:text-violet-400 text-sm font-semibold underline underline-offset-2 active:opacity-60 transition-opacity"
-            >
+            <button type="button" onClick={() => setShowCreate(true)} className="mt-5 text-sm font-semibold text-[var(--brand)]">
               방 만들기 →
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-600 px-1 tracking-widest uppercase">내 방 ({rooms.length})</h2>
+          <div className="space-y-2">
+            <p className="label-caps px-1">내 방 · {rooms.length}</p>
             {rooms.map((room) => (
               <button
                 key={room.id}
+                type="button"
                 onClick={() => navigate(`/room/${room.id}`)}
-                className="w-full bg-white dark:bg-white/5 border border-violet-100 dark:border-white/10 hover:shadow-md dark:hover:bg-white/10 active:scale-[0.98] rounded-2xl p-4 flex items-center gap-4 transition-all text-left shadow-sm"
+                className="card w-full p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
               >
-                <div className="relative w-12 h-12 shrink-0">
+                <div className="relative shrink-0">
                   <RoomAvatar photoURL={room.photoURL} emoji={room.emoji} name={room.name} className="w-12 h-12" />
                   {(unreadCounts[room.id] ?? 0) > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-rose-500 text-white text-[11px] font-bold rounded-full border-2 border-white dark:border-[#0d0d0d] flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--surface)]">
                       {(unreadCounts[room.id] ?? 0) > 99 ? '99+' : unreadCounts[room.id]}
                     </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold truncate ${(unreadCounts[room.id] ?? 0) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-800 dark:text-white'}`}>{room.name}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">멤버 {room.memberIds?.length ?? 1}명</p>
+                  <p className={`font-bold truncate ${(unreadCounts[room.id] ?? 0) > 0 ? 'text-[var(--text)]' : 'text-[var(--text)]'}`}>{room.name}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">멤버 {room.memberIds?.length ?? 1}명</p>
                 </div>
                 {(unreadCounts[room.id] ?? 0) > 0 ? (
-                  <span className="min-w-[24px] h-6 px-1.5 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0">
+                  <span className="min-w-[22px] h-[22px] px-1.5 bg-rose-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center shrink-0">
                     {(unreadCounts[room.id] ?? 0) > 99 ? '99+' : unreadCounts[room.id]}
                   </span>
                 ) : (
-                  <span className="text-gray-300 dark:text-gray-600 text-lg">›</span>
+                  <ChevronRight size={18} className="text-[var(--text-muted)] shrink-0" />
                 )}
               </button>
             ))}
@@ -319,12 +314,12 @@ export default function HomePage() {
       </main>
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#1a1a1a] border border-violet-100 dark:border-white/10 rounded-3xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-5">새 방 만들기</h3>
+        <div className="modal-overlay">
+          <div className="modal-sheet sheet-enter max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-[var(--text)] mb-5">새 방 만들기</h3>
             <form onSubmit={handleCreateRoom} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-2 tracking-widest uppercase">방 사진</label>
+                <label className="label-caps block mb-2">방 사진</label>
                 <div className="flex items-center gap-4">
                   <RoomAvatar
                     photoURL={roomPhotoPreview ?? undefined}
@@ -335,7 +330,7 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => photoInputRef.current?.click()}
-                      className="px-4 py-2 rounded-xl bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 text-sm font-semibold hover:bg-violet-200 dark:hover:bg-violet-500/30 transition-colors"
+                      className="btn btn-secondary text-sm py-2 px-4"
                     >
                       사진 선택
                     </button>
@@ -360,33 +355,32 @@ export default function HomePage() {
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">갤러리에서 원하는 사진을 골라 방 대표 이미지로 쓸 수 있어요.</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 tracking-widest uppercase">방 이름</label>
+                <label className="label-caps block mb-1">방 이름</label>
                 <input
                   type="text"
                   value={roomName}
                   onChange={(e) => setRoomName(e.target.value)}
-                  placeholder="예: 우리 사이 🌙"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                  placeholder="예: 우리 사이"
+                  className="input-field"
                   required
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 tracking-widest uppercase">방 비밀번호</label>
+                <label className="label-caps block mb-1">방 비밀번호</label>
                 <input
                   type="text"
                   value={roomJoinCode}
                   onChange={(e) => setRoomJoinCode(e.target.value.toUpperCase())}
-                  placeholder="비워두면 자동 생성 (예: K3M8P2)"
+                  placeholder="비워두면 자동 생성"
                   maxLength={12}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500 uppercase tracking-widest"
-                  style={{ fontSize: '16px' }}
+                  className="input-field uppercase tracking-widest"
                 />
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">영문+숫자 4~12자. 친구에게 이 비밀번호를 알려주면 참여할 수 있어요.</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">영문+숫자 4~12자</p>
               </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => { setShowCreate(false); resetCreateForm() }} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
-                <button type="submit" disabled={creating || !roomName.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{creating ? '만드는 중...' : '만들기'}</button>
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => { setShowCreate(false); resetCreateForm() }} className="btn btn-secondary flex-1">취소</button>
+                <button type="submit" disabled={creating || !roomName.trim()} className="btn btn-primary flex-1">{creating ? '만드는 중...' : '만들기'}</button>
               </div>
             </form>
           </div>
@@ -394,28 +388,25 @@ export default function HomePage() {
       )}
 
       {showJoinByCode && (
-        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#1a1a1a] border border-violet-100 dark:border-white/10 rounded-3xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">비밀번호로 참여</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">방장에게 받은 비밀번호를 입력하세요.</p>
+        <div className="modal-overlay">
+          <div className="modal-sheet sheet-enter">
+            <h3 className="text-lg font-bold text-[var(--text)] mb-1">비밀번호로 참여</h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-5">방장에게 받은 비밀번호를 입력하세요</p>
             <form onSubmit={handleJoinByCode} className="space-y-4">
               <input
                 type="text"
                 value={joinCodeInput}
                 onChange={(e) => { setJoinCodeInput(e.target.value.toUpperCase()); setJoinCodeError('') }}
-                placeholder="예: K3M8P2"
+                placeholder="K3M8P2"
                 maxLength={12}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/10 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500 uppercase tracking-[0.2em] text-center font-bold"
-                style={{ fontSize: '16px' }}
+                className="input-field uppercase tracking-[0.2em] text-center font-bold"
                 autoFocus
                 required
               />
-              {joinCodeError && (
-                <p className="text-sm text-rose-500 text-center">{joinCodeError}</p>
-              )}
-              <div className="flex gap-3">
-                <button type="button" onClick={() => { setShowJoinByCode(false); resetJoinForm() }} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">취소</button>
-                <button type="submit" disabled={joiningByCode || !joinCodeInput.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{joiningByCode ? '참여 중...' : '참여하기'}</button>
+              {joinCodeError && <p className="text-sm text-rose-500 text-center">{joinCodeError}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setShowJoinByCode(false); resetJoinForm() }} className="btn btn-secondary flex-1">취소</button>
+                <button type="submit" disabled={joiningByCode || !joinCodeInput.trim()} className="btn btn-primary flex-1">{joiningByCode ? '참여 중...' : '참여하기'}</button>
               </div>
             </form>
           </div>

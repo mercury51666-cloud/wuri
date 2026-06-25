@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { useAuthState } from './hooks/useAuthState'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { ToastProvider } from './contexts/ToastContext'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import RoomPage from './pages/RoomPage'
@@ -35,10 +36,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-pink-50 flex items-center justify-center">
+      <div className="app-shell flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-violet-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-violet-500 font-medium">잠깐만요...</p>
+          <div className="w-11 h-11 border-[3px] border-[var(--brand)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-[var(--text-secondary)] font-medium text-sm">잠깐만요...</p>
         </div>
       </div>
     )
@@ -46,6 +47,7 @@ function App() {
 
   return (
     <ThemeProvider>
+    <ToastProvider>
     <BrowserRouter>
       <Routes>
         <Route
@@ -63,6 +65,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ToastProvider>
     </ThemeProvider>
   )
 }
