@@ -14,6 +14,7 @@ import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
+import ScheduleCalendar from '../components/ScheduleCalendar'
 import PhotoGallery from '../components/PhotoGallery'
 import RoomAvatar from '../components/RoomAvatar'
 import { useUserProfiles } from '../hooks/useUserProfiles'
@@ -51,11 +52,12 @@ interface Room {
   pinnedMessageId?: string | null
 }
 
-type Tab = 'chat' | 'gallery' | 'mascot' | 'mission' | 'location' | 'stats' | 'mood'
+type Tab = 'chat' | 'gallery' | 'mascot' | 'mission' | 'location' | 'stats' | 'mood' | 'schedule'
 
 const TABS: { id: Tab; emoji: string; label: string }[] = [
   { id: 'chat',     emoji: '💬', label: '채팅' },
   { id: 'gallery',  emoji: '🖼️', label: '사진' },
+  { id: 'schedule', emoji: '📅', label: '일정' },
   { id: 'mood',     emoji: '😊', label: '기분' },
   { id: 'mascot',   emoji: '🐾', label: '마스코트' },
   { id: 'mission',  emoji: '🎯', label: '미션' },
@@ -996,6 +998,7 @@ export default function RoomPage() {
         )}
 
         {activeTab === 'mood' && roomId && <div className="flex-1 overflow-y-auto p-4"><MoodBoard roomId={roomId} /></div>}
+        {activeTab === 'schedule' && roomId && <div className="flex-1 overflow-y-auto p-4"><ScheduleCalendar roomId={roomId} /></div>}
         {activeTab === 'mascot' && roomId && <div className="flex-1 overflow-y-auto p-4"><Mascot roomId={roomId} totalMessages={messages.length} /></div>}
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
         {/* 위치는 탭 전환 시에도 계속 추적하기 위해 숨김 처리 방식 사용 */}
