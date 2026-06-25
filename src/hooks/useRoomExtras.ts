@@ -1,12 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   doc, collection, addDoc, setDoc, updateDoc,
   serverTimestamp, arrayUnion, arrayRemove, getDoc, getDocs,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import type { User } from 'firebase/auth'
-import { getRankLevel } from '../utils/rankSystem'
-import { birthdayKey, READ_NUDGE_MS } from '../utils/roomFeatures'
+import { birthdayKey } from '../utils/roomFeatures'
 
 export interface RoomMetaState {
   birthdays: { userId: string; name: string }[]
@@ -17,12 +16,9 @@ export function useRoomExtras(
   user: User | null,
   roomMemberIds: string[],
   memberProfiles: Record<string, { displayName: string }>,
-  memberReadAt: Record<string, number>,
-  messages: { id: string; authorId: string; authorName: string; text: string; createdAt: { seconds: number } | null }[],
   toast: (msg: string) => void,
 ) {
   const [meta, setMeta] = useState<RoomMetaState>({ birthdays: [] })
-  const nudgedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (!roomId) return
@@ -45,25 +41,6 @@ export function useRoomExtras(
     }, 15000)
     return () => clearInterval(t)
   }, [roomId])
-
-  useEffect(() => {
-    if (!user) return
-    const t = setInterval(() => {
-      const now = Date.now()
-      for (const msg of messages) {
-        if (msg.authorId !== user.uid || !msg.createdAt || nudgedRef.current.has(msg.id)) continue
-        const age = now - msg.createdAt.seconds * 1000
-        if (age < READ_NUDGE_MS) continue
-        const others = roomMemberIds.filter((id) => id !== user.uid)
-        const unread = others.some((id) => (memberReadAt[id] ?? 0) < msg.createdAt!.seconds * 1000)
-        if (unread) {
-          nudgedRef.current.add(msg.id)
-          toast(`📭 "${msg.text.slice(0, 20)}..." 아직 안 읽은 사람이 있어요`)
-        }
-      }
-    }, 60000)
-    return () => clearInterval(t)
-  }, [messages, memberReadAt, roomMemberIds, user?.uid, toast])
 
   useEffect(() => {
     if (!roomMemberIds.length) return
@@ -110,14 +87,11 @@ export function useRoomExtras(
     msgId: string,
     optionIdx: number,
     currentVotes: Record<string, string[]>,
-    voterPoints: number,
   ) => {
     if (!user || !roomId) return
-    const weight = getRankLevel(voterPoints) >= 3 ? 2 : 1
     const ref = doc(db, 'rooms', roomId, 'messages', msgId)
     const updates: Record<string, unknown> = {
       [`pollChoice.${user.uid}`]: optionIdx,
-      [`pollWeight.${user.uid}`]: weight,
     }
     for (const [key, uids] of Object.entries(currentVotes)) {
       if (uids.includes(user.uid)) {

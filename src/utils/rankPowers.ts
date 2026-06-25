@@ -84,9 +84,4 @@ export const RANK_FUN_POWERS = [
     desc: '채팅·멤버 목록에서 상급 이름에 자동으로 님이 붙어요',
   },
   { icon: '🎉', title: '임관식', desc: '승진 시 채팅 축하 이벤트' },
-  { icon: '🎂', title: '생일', desc: '생일 등록 시 배너' },
-  { icon: '@', title: '멘션', desc: '@이름 으로 호출' },
-  { icon: '📊', title: '투표', desc: '병장 이상 2표' },
-  { icon: '📭', title: '읽씹 알림', desc: '30분 미확인 시 알림' },
-  { icon: '⏰', title: '예약 메시지', desc: '앱 켜져 있을 때 자동 전송' },
 ] as const

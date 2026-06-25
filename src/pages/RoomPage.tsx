@@ -66,7 +66,6 @@ interface Message {
   pollQuestion?: string
   pollOptions?: string[]
   pollVotes?: Record<string, string[]>
-  pollWeight?: Record<string, number>
   mentions?: string[]
 }
 
@@ -142,8 +141,6 @@ export default function RoomPage() {
     user,
     room?.memberIds ?? [],
     memberProfiles,
-    memberReadAt,
-    messages,
     toast,
   )
 
@@ -884,9 +881,8 @@ export default function RoomPage() {
                         question={msg.pollQuestion ?? msg.text}
                         options={msg.pollOptions}
                         votes={msg.pollVotes ?? {}}
-                        weights={msg.pollWeight}
                         myUid={user?.uid}
-                        onVote={(i) => extras.votePoll(msg.id, i, msg.pollVotes ?? {}, myPoints)}
+                        onVote={(i) => extras.votePoll(msg.id, i, msg.pollVotes ?? {})}
                       />
                     </div>
                   )
