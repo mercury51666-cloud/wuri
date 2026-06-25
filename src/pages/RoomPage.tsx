@@ -33,7 +33,6 @@ import RankBadge from '../components/RankBadge'
 import ChatMemberRanks from '../components/ChatMemberRanks'
 import ChatBanners from '../components/ChatBanners'
 import PollMessage from '../components/PollMessage'
-import GuboBar from '../components/GuboBar'
 import HallOfFame from '../components/HallOfFame'
 import { FeatureModals, ChatFeatureBar } from '../components/FeatureModals'
 import { useRoomExtras } from '../hooks/useRoomExtras'
@@ -156,7 +155,6 @@ export default function RoomPage() {
     memberProfiles,
     memberReadAt,
     messages,
-    myMute,
     toast,
   )
 
@@ -772,22 +770,13 @@ export default function RoomPage() {
             {viewingProfile.userId && user && viewingProfile.userId !== user.uid && (
               <div className="flex flex-wrap justify-center gap-2 mt-1">
                 {canMute(getMemberPoints(user.uid), getMemberPoints(viewingProfile.userId)) && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => { handleMute(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
-                      className="px-4 py-2 rounded-xl bg-rose-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
-                    >
-                      🤐 벙어리 10초
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { extras.handleReprimand(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
-                      className="px-4 py-2 rounded-xl bg-orange-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
-                    >
-                      📢 훈계
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => { handleMute(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
+                    className="px-4 py-2 rounded-xl bg-rose-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
+                  >
+                    🤐 벙어리 10초
+                  </button>
                 )}
                 <button
                   type="button"
@@ -1086,20 +1075,12 @@ export default function RoomPage() {
                                 </button>
                               )}
                               {!isMine && canMute(getMemberPoints(user?.uid ?? ''), authorPoints) && (
-                                <>
-                                  <button
-                                    onClick={() => handleMute(msg.authorId, msg.authorName)}
-                                    className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-rose-500 dark:text-rose-400 shadow-xl active:scale-95 transition-all"
-                                  >
-                                    🤐 벙어리
-                                  </button>
-                                  <button
-                                    onClick={() => extras.handleReprimand(msg.authorId, msg.authorName)}
-                                    className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-orange-100 dark:border-orange-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-orange-500 dark:text-orange-400 shadow-xl active:scale-95 transition-all"
-                                  >
-                                    📢 훈계
-                                  </button>
-                                </>
+                                <button
+                                  onClick={() => handleMute(msg.authorId, msg.authorName)}
+                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-rose-500 dark:text-rose-400 shadow-xl active:scale-95 transition-all"
+                                >
+                                  🤐 벙어리
+                                </button>
                               )}
                               {!isMine && (
                                 <button
@@ -1202,13 +1183,6 @@ export default function RoomPage() {
         <div className="room-bottom-dock shrink-0">
           {activeTab === 'chat' && (
             <>
-              {extras.guboPending && (
-                <GuboBar
-                  pending={extras.guboPending}
-                  onGubo={extras.handleGubo}
-                  onDismiss={() => extras.setGuboPending(null)}
-                />
-              )}
               <ChatFeatureBar
                 onPoll={() => setFeatureModal('poll')}
                 onSchedule={() => setFeatureModal('schedule')}

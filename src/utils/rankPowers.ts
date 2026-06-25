@@ -88,8 +88,6 @@ export const RANK_FUN_POWERS = [
     title: '계급 호출',
     desc: '채팅·멤버 목록에서 상급 이름에 자동으로 님이 붙어요',
   },
-  { icon: '📢', title: '훈계', desc: '상급이 하급을 30초 벙어리 + 훈계 멘트' },
-  { icon: '🫡', title: '구보', desc: '벙어리 풀리면 상급에게 구보 3회' },
   { icon: '🏆', title: '계급전', desc: '주간 1등 명예의 전당 + 배너' },
   { icon: '⚡', title: '이병 반란', desc: '최하위 계급 하루 1번 전원 3초 벙어리' },
   { icon: '🎉', title: '임관식', desc: '승진 시 채팅 축하 이벤트' },
