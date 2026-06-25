@@ -3,7 +3,7 @@ import type { RoomRankData } from '../utils/roomPoints'
 import RankInsignia from './RankInsignia'
 
 interface Props {
-  rank: Pick<RoomRankData, 'rankName' | 'points'>
+  rank: Pick<RoomRankData, 'rankName' | 'points' | 'equippedTitle'>
   size?: 'sm' | 'md'
 }
 
@@ -15,7 +15,7 @@ export default function RankBadge({ rank, size = 'sm' }: Props) {
       }`}
     >
       <RankInsignia points={rank.points} size={size} />
-      <span>{rank.rankName}</span>
+      <span>{rank.rankName}{rank.equippedTitle ? ` · ${rank.equippedTitle}` : ''}</span>
     </span>
   )
 }

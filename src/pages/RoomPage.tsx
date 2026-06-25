@@ -23,7 +23,7 @@ import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 import { awardMessagePoints } from '../utils/roomPoints'
 import type { RoomRankData } from '../utils/roomPoints'
-import { getAvailableReactions, getRankAvatarClass, getRankBubbleClass, getRankPerks } from '../utils/rankSystem'
+import { getAvailableReactions, getRankAvatarClass, getRankBubbleClass, getRankPerks, getRankLevel } from '../utils/rankSystem'
 import {
   canMute, canSalute, buildMuteEventText, buildSaluteEventText,
   getRankName, formatRankHonorificName, MUTE_DURATION_MS, MUTE_COOLDOWN_MS, SALUTE_COOLDOWN_MS,
@@ -31,6 +31,13 @@ import {
 } from '../utils/rankPowers'
 import RankBadge from '../components/RankBadge'
 import ChatMemberRanks from '../components/ChatMemberRanks'
+import ChatBanners from '../components/ChatBanners'
+import PollMessage from '../components/PollMessage'
+import GuboBar from '../components/GuboBar'
+import HallOfFame from '../components/HallOfFame'
+import { FeatureModals, ChatFeatureBar } from '../components/FeatureModals'
+import { useRoomExtras } from '../hooks/useRoomExtras'
+import { parseMentionIds, renderTextWithMentions } from '../utils/mentions'
 import RoomBottomNav, { TAB_TITLES, MORE_SUB_TABS, type RoomTab, type PrimaryTab, type MoreSubTab } from '../components/RoomBottomNav'
 import RoomMorePanel from '../components/RoomMorePanel'
 import { ChevronLeft, Search } from 'lucide-react'
@@ -56,8 +63,13 @@ interface Message {
   reactions?: Reaction
   replyTo?: ReplyTo
   type?: 'rank_event'
-  messageType?: 'rank_event'
-  event?: 'mute' | 'salute'
+  messageType?: 'rank_event' | 'poll'
+  event?: 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion' | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion'
+  pollQuestion?: string
+  pollOptions?: string[]
+  pollVotes?: Record<string, string[]>
+  pollWeight?: Record<string, number>
+  mentions?: string[]
 }
 
 function isRankEventMessage(msg: Message): boolean {
@@ -94,6 +106,7 @@ export default function RoomPage() {
   const [renaming, setRenaming] = useState(false)
   const [changingPhoto, setChangingPhoto] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
+  const [featureModal, setFeatureModal] = useState<'poll' | 'schedule' | 'title' | 'birthday' | 'theme' | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [activeTab, setActiveTab] = useState<RoomTab>('chat')
@@ -129,6 +142,23 @@ export default function RoomPage() {
   )
   const myPoints = useMemo(() => memberRanks[user?.uid ?? '']?.points ?? 0, [memberRanks, user?.uid])
   const honorific = (name: string, memberPoints: number) => formatRankHonorificName(name, memberPoints, myPoints)
+  const authorLabel = (name: string, uid: string, points: number) => {
+    const title = memberRanks[uid]?.equippedTitle
+    const base = honorific(name, points)
+    return title ? `[${title}] ${base}` : base
+  }
+
+  const extras = useRoomExtras(
+    roomId,
+    user,
+    room?.memberIds ?? [],
+    memberRanks,
+    memberProfiles,
+    memberReadAt,
+    messages,
+    myMute,
+    toast,
+  )
 
   const openProfile = (name: string, photoURL?: string, userId?: string) => {
     setViewingProfile({ name, photoURL, userId })
@@ -486,12 +516,14 @@ export default function RoomPage() {
     setSending(true)
     const msgText = text.trim()
     try {
+      const mentions = parseMentionIds(msgText, memberProfiles)
       const payload: Record<string, unknown> = {
         text: msgText,
         authorId: user.uid,
         authorName: user.displayName || '친구',
         authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
+        mentions,
       }
       if (replyTarget) {
         payload.replyTo = {
@@ -679,7 +711,10 @@ export default function RoomPage() {
   const isJoined = user && room.memberIds.includes(user.uid)
 
   return (
-    <div className="page-enter flex-1 min-h-0 w-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden">
+    <div
+      className="page-enter flex-1 min-h-0 w-full bg-[var(--surface-2)] flex flex-col max-w-md mx-auto overflow-hidden"
+      style={extras.themeAccent ? { ['--brand' as string]: extras.themeAccent } : undefined}
+    >
       {viewingPhoto && (
         <div
           className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4"
@@ -706,8 +741,9 @@ export default function RoomPage() {
           className="fixed inset-0 z-[3000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
           onClick={() => setViewingProfile(null)}
         >
-          <div className="flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-violet-200">
+          <div className={`flex flex-col items-center gap-4 profile-rank-wrap profile-rank-${getRankLevel(viewingProfile.userId ? getMemberPoints(viewingProfile.userId) : 0)}`} onClick={(e) => e.stopPropagation()}>
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl bg-violet-200 relative">
+              <div className="profile-rank-bg absolute inset-0 opacity-30" />
               {viewingProfile.photoURL
                 ? <img src={viewingProfile.photoURL} alt={viewingProfile.name} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center text-5xl font-black text-violet-600">{viewingProfile.name[0]}</div>
@@ -736,13 +772,22 @@ export default function RoomPage() {
             {viewingProfile.userId && user && viewingProfile.userId !== user.uid && (
               <div className="flex flex-wrap justify-center gap-2 mt-1">
                 {canMute(getMemberPoints(user.uid), getMemberPoints(viewingProfile.userId)) && (
-                  <button
-                    type="button"
-                    onClick={() => { handleMute(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
-                    className="px-4 py-2 rounded-xl bg-rose-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
-                  >
-                    🤐 벙어리 10초
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { handleMute(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
+                      className="px-4 py-2 rounded-xl bg-rose-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
+                    >
+                      🤐 벙어리 10초
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { extras.handleReprimand(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
+                      className="px-4 py-2 rounded-xl bg-orange-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
+                    >
+                      📢 훈계
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"
@@ -755,6 +800,15 @@ export default function RoomPage() {
                 >
                   🫡 경례
                 </button>
+              </div>
+            )}
+            {viewingProfile.userId === user?.uid && (
+              <div className="flex flex-wrap justify-center gap-2 mt-1">
+                <button type="button" onClick={() => setFeatureModal('title')} className="px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-bold">🎖️ 칭호</button>
+                <button type="button" onClick={() => setFeatureModal('birthday')} className="px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-bold">🎂 생일</button>
+                {getRankLevel(myPoints) >= 6 && (
+                  <button type="button" onClick={() => setFeatureModal('theme')} className="px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-bold">🎨 테마</button>
+                )}
               </div>
             )}
             <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
@@ -867,6 +921,9 @@ export default function RoomPage() {
               </div>
             )}
             {room && (
+              <ChatBanners meta={extras.meta} loginStreak={extras.loginStreak} />
+            )}
+            {room && (
               <ChatMemberRanks
                 memberIds={room.memberIds}
                 memberProfiles={memberProfiles}
@@ -895,6 +952,21 @@ export default function RoomPage() {
                       <p className={`rank-event rank-event-${msg.event ?? 'mute'} text-xs px-3 py-1.5 rounded-full`}>
                         {msg.text}
                       </p>
+                    </div>
+                  )
+                }
+
+                if (msg.messageType === 'poll' && msg.pollOptions?.length) {
+                  return (
+                    <div key={msg.id} className={`flex ${msg.authorId === user?.uid ? 'justify-end' : 'justify-start'}`}>
+                      <PollMessage
+                        question={msg.pollQuestion ?? msg.text}
+                        options={msg.pollOptions}
+                        votes={msg.pollVotes ?? {}}
+                        weights={msg.pollWeight}
+                        myUid={user?.uid}
+                        onVote={(i) => extras.votePoll(msg.id, i, msg.pollVotes ?? {}, myPoints)}
+                      />
                     </div>
                   )
                 }
@@ -947,7 +1019,7 @@ export default function RoomPage() {
                       <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && (
                           <div className="flex items-center gap-1 ml-1">
-                            <span className="text-xs text-gray-400">{honorific(msg.authorName, authorPoints)}</span>
+                            <span className="text-xs text-gray-400">{authorLabel(msg.authorName, msg.authorId, authorPoints)}</span>
                             {authorRank
                               ? <RankBadge rank={authorRank} />
                               : <RankBadge rank={{ rankName: '이병', points: 0 }} />}
@@ -981,7 +1053,7 @@ export default function RoomPage() {
                               <p className="break-words whitespace-pre-wrap">
                                 {showSearch && searchQuery.trim()
                                   ? highlightText(msg.text, searchQuery)
-                                  : msg.text}
+                                  : renderTextWithMentions(msg.text, !!user?.uid && msg.mentions?.includes(user.uid))}
                               </p>
                             )}
                             {msg.imageURL && (
@@ -1014,12 +1086,20 @@ export default function RoomPage() {
                                 </button>
                               )}
                               {!isMine && canMute(getMemberPoints(user?.uid ?? ''), authorPoints) && (
-                                <button
-                                  onClick={() => handleMute(msg.authorId, msg.authorName)}
-                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-rose-500 dark:text-rose-400 shadow-xl active:scale-95 transition-all"
-                                >
-                                  🤐 벙어리
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleMute(msg.authorId, msg.authorName)}
+                                    className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-rose-500 dark:text-rose-400 shadow-xl active:scale-95 transition-all"
+                                  >
+                                    🤐 벙어리
+                                  </button>
+                                  <button
+                                    onClick={() => extras.handleReprimand(msg.authorId, msg.authorName)}
+                                    className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-orange-100 dark:border-orange-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-orange-500 dark:text-orange-400 shadow-xl active:scale-95 transition-all"
+                                  >
+                                    📢 훈계
+                                  </button>
+                                </>
                               )}
                               {!isMine && (
                                 <button
@@ -1111,6 +1191,7 @@ export default function RoomPage() {
         {activeTab === 'stats' && roomId && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <RankBoard roomId={roomId} />
+            <HallOfFame entries={extras.meta.hallOfFame} />
             <RoomStats roomId={roomId} />
           </div>
         )}
@@ -1121,6 +1202,18 @@ export default function RoomPage() {
         <div className="room-bottom-dock shrink-0">
           {activeTab === 'chat' && (
             <>
+              {extras.guboPending && (
+                <GuboBar
+                  pending={extras.guboPending}
+                  onGubo={extras.handleGubo}
+                  onDismiss={() => extras.setGuboPending(null)}
+                />
+              )}
+              <ChatFeatureBar
+                onPoll={() => setFeatureModal('poll')}
+                onSchedule={() => setFeatureModal('schedule')}
+                onRebellion={extras.handleRebellion}
+              />
               {typingUsers.length > 0 && (
                 <div className="px-4 pt-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5">
                   <span className="flex gap-0.5">
@@ -1159,7 +1252,7 @@ export default function RoomPage() {
                   />
                 </label>
                 <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }}
-                  placeholder={isMuted ? '벙어리 상태…' : '메시지 보내기...'}
+                  placeholder={isMuted ? '벙어리 상태…' : '@이름 멘션 · 메시지 보내기...'}
                   disabled={isMuted}
                   className="input-field flex-1 py-2.5 disabled:opacity-50"
                 />
@@ -1242,6 +1335,21 @@ export default function RoomPage() {
           </div>
         </div>
       )}
+
+      <FeatureModals
+        showPoll={featureModal === 'poll'}
+        showSchedule={featureModal === 'schedule'}
+        showTitle={featureModal === 'title'}
+        showBirthday={featureModal === 'birthday'}
+        showTheme={featureModal === 'theme'}
+        onClose={() => setFeatureModal(null)}
+        onCreatePoll={extras.createPoll}
+        onSchedule={(t, min) => extras.scheduleMessage(t, Date.now() + min * 60000, parseMentionIds(t, memberProfiles))}
+        onSaveTitle={extras.saveTitle}
+        onSaveBirthday={extras.saveBirthday}
+        onSetTheme={extras.setRoomTheme}
+        roomThemes={extras.ROOM_THEMES}
+      />
 
       <input
         ref={roomPhotoInputRef}

@@ -375,6 +375,27 @@ html, body {
   background: rgba(16, 185, 129, 0.15);
   color: #34d399;
 }
+.rank-event-reprimand { background: rgba(249, 115, 22, 0.12); color: #ea580c; border: 1px solid rgba(249, 115, 22, 0.2); }
+.rank-event-gubo { background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+.rank-event-promotion { background: linear-gradient(90deg, rgba(124,58,237,0.15), rgba(245,158,11,0.15)); color: var(--brand); border: 1px solid rgba(124,58,237,0.2); font-weight: 700; }
+.rank-event-rebellion { background: rgba(239, 68, 68, 0.12); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); }
+.rank-event-mvp, .rank-event-group_goal, .rank-event-weekly_champion { background: rgba(124, 58, 237, 0.1); color: var(--brand); border: 1px solid rgba(124, 58, 237, 0.15); }
+
+.chat-banner { border: 1px solid var(--border); }
+.banner-mvp { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+.banner-champion { background: rgba(124, 58, 237, 0.1); color: var(--brand); }
+.banner-birthday { background: rgba(244, 114, 182, 0.12); color: #db2777; }
+.banner-group { background: rgba(16, 185, 129, 0.1); color: #059669; }
+.banner-theme { background: rgba(14, 165, 233, 0.1); color: #0284c7; }
+.banner-streak { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+
+.profile-rank-wrap { padding: 1.5rem; border-radius: 1.5rem; }
+.profile-rank-bg { background: radial-gradient(circle at 50% 30%, var(--brand), transparent 70%); }
+.profile-rank-wrap.profile-rank-4,
+.profile-rank-wrap.profile-rank-5,
+.profile-rank-wrap.profile-rank-6 {
+  background: linear-gradient(180deg, rgba(124,58,237,0.25), rgba(0,0,0,0.6));
+}
 
 .skeleton {
   background: linear-gradient(90deg, var(--surface-3) 25%, color-mix(in srgb, var(--surface-3) 60%, white) 50%, var(--surface-3) 75%);

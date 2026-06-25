@@ -6,6 +6,8 @@ import {
   getPreviousWeekKey,
   POINTS,
 } from './rankSystem'
+import { postRankEvent } from './rankEvents'
+import { GROUP_MISSION_GOAL } from './roomFeatures'
 
 export interface RoomRankData {
   userId: string
@@ -19,6 +21,50 @@ export interface RoomRankData {
   todayMessageCount: number
   todayDate: string
   missionBonusDates: string[]
+  equippedTitle?: string
+  loginStreak?: number
+  lastLoginDate?: string
+}
+
+export interface HallEntry {
+  weekKey: string
+  type: 'mission' | 'chat' | 'overall'
+  userName: string
+  userId: string
+  value: number
+}
+
+async function incrementGroupMission(roomId: string, userId: string, userName: string) {
+  const weekKey = getWeekKey()
+  const ref = doc(db, 'rooms', roomId, 'meta', `groupMission_${weekKey}`)
+  const snap = await getDoc(ref)
+  const prev = snap.data()?.total ?? 0
+  const total = prev + 1
+  await setDoc(ref, { total, goal: GROUP_MISSION_GOAL, weekKey }, { merge: true })
+  if (prev < GROUP_MISSION_GOAL && total >= GROUP_MISSION_GOAL) {
+    await postRankEvent(
+      roomId,
+      { uid: userId, name: userName },
+      'group_goal',
+      `🎯 단체 미션 달성! 이번 주 미션 ${GROUP_MISSION_GOAL}개 돌파!`,
+    )
+  }
+}
+
+async function maybePostPromotion(
+  roomId: string,
+  userId: string,
+  userName: string,
+  prevRankName: string,
+  newRankName: string,
+) {
+  if (prevRankName === newRankName) return
+  await postRankEvent(
+    roomId,
+    { uid: userId, name: userName },
+    'promotion',
+    `🎉 ${userName} ${prevRankName} → ${newRankName} 임관! 축하합니다!`,
+  )
 }
 
 async function processWeeklyBonus(roomId: string, currentWeek: string) {
@@ -62,6 +108,27 @@ async function processWeeklyBonus(roomId: string, currentWeek: string) {
         weeklyMessages: 0,
       }, { merge: true })
     }
+
+    const hallRef = doc(db, 'rooms', roomId, 'meta', 'hallOfFame')
+    const hallSnap = await getDoc(hallRef)
+    const entries: HallEntry[] = hallSnap.exists() ? (hallSnap.data().entries ?? []) : []
+    if (topMission?.weeklyMissions) {
+      entries.unshift({ weekKey: prevWeek, type: 'mission', userName: topMission.userName, userId: topMission.userId, value: topMission.weeklyMissions })
+    }
+    if (topChat?.weeklyMessages) {
+      entries.unshift({ weekKey: prevWeek, type: 'chat', userName: topChat.userName, userId: topChat.userId, value: topChat.weeklyMessages })
+    }
+    const topOverall = [...prevRanks].sort((a, b) => b.points - a.points)[0]
+    if (topOverall) {
+      await setDoc(doc(db, 'rooms', roomId, 'meta', `weeklyChampion_${currentWeek}`), {
+        userId: topOverall.userId,
+        userName: topOverall.userName,
+        title: '🏆 계급전 우승',
+        weekKey: prevWeek,
+      }, { merge: true })
+      entries.unshift({ weekKey: prevWeek, type: 'overall', userName: topOverall.userName, userId: topOverall.userId, value: topOverall.points })
+    }
+    await setDoc(hallRef, { entries: entries.slice(0, 30) }, { merge: true })
   }
 
   await setDoc(processedRef, { processed: true, forWeek: prevWeek })
@@ -87,6 +154,8 @@ async function loadRank(roomId: string, userId: string, userName: string): Promi
       todayMessageCount: 0,
       todayDate: today,
       missionBonusDates: [],
+      loginStreak: 0,
+      lastLoginDate: '',
     }
   }
 
@@ -112,6 +181,33 @@ async function saveRank(roomId: string, data: RoomRankData) {
   await setDoc(doc(db, 'rooms', roomId, 'ranks', data.userId), data, { merge: true })
 }
 
+export async function recordLoginStreak(
+  roomId: string,
+  userId: string,
+  userName: string,
+): Promise<number> {
+  const today = new Date().toISOString().slice(0, 10)
+  const data = await loadRank(roomId, userId, userName)
+  if (data.lastLoginDate === today) return data.loginStreak ?? 0
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const streak = data.lastLoginDate === yesterday ? (data.loginStreak ?? 0) + 1 : 1
+  data.loginStreak = streak
+  data.lastLoginDate = today
+  if (streak >= 2) data.points += Math.min(streak, 7)
+  const rank = getRankFromPoints(data.points)
+  data.rankName = rank.name
+  data.rankEmoji = rank.emoji
+  await saveRank(roomId, data)
+  return streak
+}
+
+export async function setEquippedTitle(roomId: string, userId: string, userName: string, title: string) {
+  const data = await loadRank(roomId, userId, userName)
+  data.equippedTitle = title.slice(0, 12)
+  await saveRank(roomId, data)
+}
+
 export async function awardMissionPoints(
   roomId: string,
   userId: string,
@@ -121,6 +217,7 @@ export async function awardMissionPoints(
 ): Promise<{ gained: number; label: string }> {
   await processWeeklyBonus(roomId, getWeekKey())
   const data = await loadRank(roomId, userId, userName)
+  const prevRankName = data.rankName
 
   let gained = POINTS.MISSION
   data.weeklyMissions += 1
@@ -136,8 +233,10 @@ export async function awardMissionPoints(
   data.rankName = rank.name
   data.rankEmoji = rank.emoji
   await saveRank(roomId, data)
+  await maybePostPromotion(roomId, userId, userName, prevRankName, rank.name)
+  await incrementGroupMission(roomId, userId, userName)
 
-  return { gained, label: formatRankLabel(rank) }
+  return { gained, label: `${rank.name}` }
 }
 
 export async function awardMessagePoints(
@@ -147,6 +246,7 @@ export async function awardMessagePoints(
 ): Promise<number> {
   await processWeeklyBonus(roomId, getWeekKey())
   const data = await loadRank(roomId, userId, userName)
+  const prevRankName = data.rankName
 
   if (data.todayMessageCount >= POINTS.MESSAGE_DAILY_CAP) return 0
 
@@ -158,10 +258,28 @@ export async function awardMessagePoints(
   data.rankName = rank.name
   data.rankEmoji = rank.emoji
   await saveRank(roomId, data)
+  await maybePostPromotion(roomId, userId, userName, prevRankName, rank.name)
 
   return POINTS.MESSAGE
 }
 
-function formatRankLabel(rank: ReturnType<typeof getRankFromPoints>) {
-  return `${rank.emoji} ${rank.name}`
+export async function updateDailyMvpMeta(
+  roomId: string,
+  ranks: Record<string, RoomRankData>,
+) {
+  const today = new Date().toISOString().slice(0, 10)
+  const ref = doc(db, 'rooms', roomId, 'meta', `mvp_${today}`)
+  const snap = await getDoc(ref)
+  if (snap.exists()) return
+
+  let best: { userId: string; userName: string; score: number } | null = null
+  for (const r of Object.values(ranks)) {
+    const score = r.todayMessageCount + (r.todayDate === today ? r.weeklyMissions : 0)
+    if (score > 0 && (!best || score > best.score)) {
+      best = { userId: r.userId, userName: r.userName, score }
+    }
+  }
+  if (best) {
+    await setDoc(ref, { ...best, date: today }, { merge: true })
+  }
 }
