@@ -351,6 +351,31 @@ html, body {
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+.rank-event {
+  font-weight: 600;
+  text-align: center;
+  max-width: 90%;
+  line-height: 1.4;
+}
+.rank-event-mute {
+  background: rgba(244, 63, 94, 0.1);
+  color: #e11d48;
+  border: 1px solid rgba(244, 63, 94, 0.15);
+}
+.rank-event-salute {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+.dark .rank-event-mute {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+.dark .rank-event-salute {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
 .skeleton {
   background: linear-gradient(90deg, var(--surface-3) 25%, color-mix(in srgb, var(--surface-3) 60%, white) 50%, var(--surface-3) 75%);
   background-size: 200% 100%;

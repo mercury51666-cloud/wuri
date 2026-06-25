@@ -7,6 +7,7 @@ import {
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
+import { useToast } from '../contexts/ToastContext'
 import { useMessageNotifications } from '../hooks/useNotifications'
 import { countUnreadByOthers } from '../hooks/useReadStatus'
 import DailyMission from '../components/DailyMission'
@@ -23,6 +24,11 @@ import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../u
 import { awardMessagePoints } from '../utils/roomPoints'
 import type { RoomRankData } from '../utils/roomPoints'
 import { getAvailableReactions, getRankAvatarClass, getRankBubbleClass, getRankPerks } from '../utils/rankSystem'
+import {
+  canMute, canSalute, buildMuteEventText, buildSaluteEventText,
+  getRankName, MUTE_DURATION_MS, MUTE_COOLDOWN_MS, SALUTE_COOLDOWN_MS,
+  type RoomMute,
+} from '../utils/rankPowers'
 import RankBadge from '../components/RankBadge'
 import ChatMemberRanks from '../components/ChatMemberRanks'
 import RoomBottomNav, { TAB_TITLES, MORE_SUB_TABS, type RoomTab, type PrimaryTab, type MoreSubTab } from '../components/RoomBottomNav'
@@ -49,6 +55,8 @@ interface Message {
   createdAt: { seconds: number } | null
   reactions?: Reaction
   replyTo?: ReplyTo
+  type?: 'rank_event'
+  event?: 'mute' | 'salute'
 }
 
 interface Room {
@@ -64,6 +72,7 @@ export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const { user } = useAuthState()
   const { dark, toggleDark } = useTheme()
+  const { toast } = useToast()
   const navigate = useNavigate()
 
   const [room, setRoom] = useState<Room | null>(null)
@@ -95,10 +104,14 @@ export default function RoomPage() {
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
   const [, setTypingTick] = useState(0)
   const [memberRanks, setMemberRanks] = useState<Record<string, RoomRankData>>({})
+  const [myMute, setMyMute] = useState<RoomMute | null>(null)
+  const [, setMuteTick] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const roomPhotoInputRef = useRef<HTMLInputElement>(null)
+  const muteCooldownRef = useRef<Record<string, number>>({})
+  const saluteCooldownRef = useRef(0)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
   const REACTION_EMOJIS = useMemo(
@@ -113,6 +126,86 @@ export default function RoomPage() {
   const openProfile = (name: string, photoURL?: string, userId?: string) => {
     setViewingProfile({ name, photoURL, userId })
   }
+
+  const getMemberPoints = (uid: string) => memberRanks[uid]?.points ?? 0
+
+  const handleMute = async (targetId: string, targetName: string) => {
+    if (!user || !roomId || targetId === user.uid) return
+    const myPoints = getMemberPoints(user.uid)
+    const targetPoints = getMemberPoints(targetId)
+    if (!canMute(myPoints, targetPoints)) {
+      toast('계급이 더 높을 때만 벙어리를 쓸 수 있어요')
+      return
+    }
+    const key = `${user.uid}_${targetId}`
+    if ((muteCooldownRef.current[key] ?? 0) > Date.now()) {
+      toast('같은 사람에게는 1분에 한 번만!')
+      return
+    }
+    const actorRankName = getRankName(myPoints)
+    try {
+      await setDoc(doc(db, 'rooms', roomId, 'mutes', targetId), {
+        byUserId: user.uid,
+        byUserName: user.displayName || '친구',
+        byRankName: actorRankName,
+        until: Date.now() + MUTE_DURATION_MS,
+      })
+      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
+        type: 'rank_event',
+        event: 'mute',
+        text: buildMuteEventText(user.displayName || '친구', actorRankName, targetName),
+        authorId: user.uid,
+        authorName: user.displayName || '친구',
+        createdAt: serverTimestamp(),
+      })
+      muteCooldownRef.current[key] = Date.now() + MUTE_COOLDOWN_MS
+      setReactionTarget(null)
+      toast(`${targetName}님 벙어리! 🤐`)
+    } catch {
+      toast('벙어리 실패… 다시 시도해 주세요')
+    }
+  }
+
+  const handleSalute = async (targetId: string, targetName: string) => {
+    if (!user || !roomId || targetId === user.uid) return
+    const myPoints = getMemberPoints(user.uid)
+    const targetPoints = getMemberPoints(targetId)
+    if (!canSalute(myPoints, targetPoints)) {
+      toast('계급이 더 높은 분에게만 경례할 수 있어요')
+      return
+    }
+    if (saluteCooldownRef.current > Date.now()) {
+      toast('경례는 30초마다 한 번!')
+      return
+    }
+    const actorRankName = getRankName(myPoints)
+    const targetRankName = getRankName(targetPoints)
+    try {
+      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
+        type: 'rank_event',
+        event: 'salute',
+        text: buildSaluteEventText(
+          user.displayName || '친구',
+          actorRankName,
+          targetName,
+          targetRankName,
+        ),
+        authorId: user.uid,
+        authorName: user.displayName || '친구',
+        createdAt: serverTimestamp(),
+      })
+      saluteCooldownRef.current = Date.now() + SALUTE_COOLDOWN_MS
+      setViewingProfile(null)
+      toast('경례! 🫡')
+    } catch {
+      toast('경례 실패… 다시 시도해 주세요')
+    }
+  }
+
+  const muteRemainingSec = myMute
+    ? Math.max(0, Math.ceil((myMute.until - Date.now()) / 1000))
+    : 0
+  const isMuted = muteRemainingSec > 0
 
   const getReplyPreview = (msg: Pick<Message, 'text' | 'imageURL'>) => {
     if (msg.imageURL) return '📷 사진'
@@ -252,6 +345,36 @@ export default function RoomPage() {
     })
   }, [roomId])
 
+  useEffect(() => {
+    if (!roomId || !user) return
+    return onSnapshot(doc(db, 'rooms', roomId, 'mutes', user.uid), (snap) => {
+      if (!snap.exists()) {
+        setMyMute(null)
+        return
+      }
+      const data = snap.data() as RoomMute
+      if (data.until <= Date.now()) {
+        setMyMute(null)
+        deleteDoc(snap.ref).catch(() => {})
+      } else {
+        setMyMute(data)
+      }
+    })
+  }, [roomId, user])
+
+  useEffect(() => {
+    if (!myMute) return
+    const t = setInterval(() => {
+      if (myMute.until <= Date.now()) {
+        setMyMute(null)
+        if (roomId && user) deleteDoc(doc(db, 'rooms', roomId, 'mutes', user.uid)).catch(() => {})
+      } else {
+        setMuteTick((n) => n + 1)
+      }
+    }, 500)
+    return () => clearInterval(t)
+  }, [myMute, roomId, user])
+
   // 기존 방에 비밀번호 없으면 멤버가 열 때 자동 생성
   useEffect(() => {
     if (!user || !roomId || !room || room.joinCode) return
@@ -341,7 +464,7 @@ export default function RoomPage() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !roomId || !text.trim()) return
+    if (!user || !roomId || !text.trim() || isMuted) return
     setSending(true)
     const msgText = text.trim()
     try {
@@ -371,7 +494,7 @@ export default function RoomPage() {
   }
 
   const sendImage = async (file: File) => {
-    if (!user || !roomId) return
+    if (!user || !roomId || isMuted) return
     setSending(true)
     try {
       const imageURL = await uploadToCloudinary(file)
@@ -588,6 +711,28 @@ export default function RoomPage() {
                   : <RankBadge rank={{ rankName: '이병', points: 0 }} size="md" />}
               </div>
             )}
+            {viewingProfile.userId && user && viewingProfile.userId !== user.uid && (
+              <div className="flex flex-wrap justify-center gap-2 mt-1">
+                {canMute(getMemberPoints(user.uid), getMemberPoints(viewingProfile.userId)) && (
+                  <button
+                    type="button"
+                    onClick={() => { handleMute(viewingProfile.userId!, viewingProfile.name); setViewingProfile(null) }}
+                    className="px-4 py-2 rounded-xl bg-rose-500/90 text-white text-sm font-bold active:scale-95 transition-transform"
+                  >
+                    🤐 벙어리 10초
+                  </button>
+                )}
+                {canSalute(getMemberPoints(user.uid), getMemberPoints(viewingProfile.userId)) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSalute(viewingProfile.userId!, viewingProfile.name)}
+                    className="px-4 py-2 rounded-xl bg-emerald-600/90 text-white text-sm font-bold active:scale-95 transition-transform"
+                  >
+                    🫡 경례
+                  </button>
+                )}
+              </div>
+            )}
             <button onClick={() => setViewingProfile(null)} className="text-white/60 text-sm mt-2">닫기</button>
           </div>
         </div>
@@ -719,6 +864,16 @@ export default function RoomPage() {
                 </div>
               )}
               {messages.map((msg, idx) => {
+                if (msg.type === 'rank_event') {
+                  return (
+                    <div key={msg.id} className="flex justify-center my-1">
+                      <p className={`rank-event rank-event-${msg.event ?? 'mute'} text-xs px-3 py-1.5 rounded-full`}>
+                        {msg.text}
+                      </p>
+                    </div>
+                  )
+                }
+
                 const isMine = msg.authorId === user?.uid
                 const authorPoints = memberRanks[msg.authorId]?.points ?? 0
                 const authorRank = memberRanks[msg.authorId]
@@ -833,6 +988,14 @@ export default function RoomPage() {
                                   📌 공지
                                 </button>
                               )}
+                              {!isMine && canMute(getMemberPoints(user?.uid ?? ''), authorPoints) && (
+                                <button
+                                  onClick={() => handleMute(msg.authorId, msg.authorName)}
+                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-rose-100 dark:border-rose-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-rose-500 dark:text-rose-400 shadow-xl active:scale-95 transition-all"
+                                >
+                                  🤐 벙어리
+                                </button>
+                              )}
                               {isMine && (
                                 <button
                                   onClick={() => deleteMessage(msg)}
@@ -905,7 +1068,7 @@ export default function RoomPage() {
             onChangePhoto={() => roomPhotoInputRef.current?.click()}
             onToggleDark={toggleDark}
             onLeave={() => setShowLeave(true)}
-            onViewProfile={(name, photoURL) => setViewingProfile({ name, photoURL })}
+            onViewProfile={(name, photoURL, userId) => openProfile(name, photoURL, userId)}
           />
         )}
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
@@ -949,17 +1112,24 @@ export default function RoomPage() {
                   <button type="button" onClick={() => setReplyTarget(null)} className="icon-btn text-lg">✕</button>
                 </div>
               )}
+              {isMuted && (
+                <div className="px-4 py-2 text-xs text-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-b border-rose-100 dark:border-rose-500/20">
+                  {myMute?.byUserName} {myMute?.byRankName}님의 명령 — 벙어리 {muteRemainingSec}초 🤐
+                </div>
+              )}
               <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2">
-                <label className="icon-btn shrink-0 cursor-pointer">
+                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
                   <span className="text-lg">🖼️</span>
-                  <input type="file" accept="image/*" className="hidden" disabled={sending}
+                  <input type="file" accept="image/*" className="hidden" disabled={sending || isMuted}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
                   />
                 </label>
-                <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }} placeholder="메시지 보내기..."
-                  className="input-field flex-1 py-2.5"
+                <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }}
+                  placeholder={isMuted ? '벙어리 상태…' : '메시지 보내기...'}
+                  disabled={isMuted}
+                  className="input-field flex-1 py-2.5 disabled:opacity-50"
                 />
-                <button type="submit" disabled={sending || !text.trim()}
+                <button type="submit" disabled={sending || !text.trim() || isMuted}
                   className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
                 >{sending ? '⏳' : '→'}</button>
               </form>

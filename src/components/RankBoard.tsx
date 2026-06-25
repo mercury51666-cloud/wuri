@@ -3,6 +3,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { RANK_TIERS, getNextRank, POINTS, getWeekKey, TIER_PERK_SUMMARY, type RankTier } from '../utils/rankSystem'
+import { RANK_FUN_POWERS } from '../utils/rankPowers'
 import type { RoomRankData } from '../utils/roomPoints'
 import RankInsignia from './RankInsignia'
 
@@ -76,6 +77,24 @@ export default function RankBoard({ roomId }: Props) {
               : '-'}
           </p>
           <p className="text-xs text-gray-400 mt-1">+{POINTS.WEEKLY_CHAT_TOP}점 보너스</p>
+        </div>
+      </div>
+
+      {/* 계급 장난 기능 */}
+      <div className="bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-violet-100 dark:border-violet-500/20">
+          <h3 className="font-bold text-violet-700 dark:text-violet-300 text-sm">🎭 계급 장난 기능</h3>
+        </div>
+        <div className="divide-y divide-violet-100/80 dark:divide-violet-500/10">
+          {RANK_FUN_POWERS.map(({ icon, title, desc }) => (
+            <div key={title} className="px-4 py-3 flex gap-3">
+              <span className="text-xl shrink-0">{icon}</span>
+              <div>
+                <p className="text-sm font-bold text-gray-800 dark:text-white">{title}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

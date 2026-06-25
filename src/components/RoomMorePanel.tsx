@@ -27,7 +27,7 @@ interface Props {
   onChangePhoto: () => void
   onToggleDark: () => void
   onLeave: () => void
-  onViewProfile: (name: string, photoURL?: string) => void
+  onViewProfile: (name: string, photoURL?: string, userId?: string) => void
 }
 
 const FEATURES: { id: MoreSubTab; label: string; desc: string; Icon: typeof Smile; color: string }[] = [
@@ -84,7 +84,7 @@ export default function RoomMorePanel({
               <button
                 key={uid}
                 type="button"
-                onClick={() => profile && onViewProfile(profile.displayName, profile.photoURL ?? undefined)}
+                onClick={() => profile && onViewProfile(profile.displayName, profile.photoURL ?? undefined, uid)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors"
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--brand-soft)] shrink-0">
