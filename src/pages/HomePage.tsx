@@ -26,6 +26,7 @@ import RoomAvatar from '../components/RoomAvatar'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 import { useToast } from '../contexts/ToastContext'
+import { postJoinWelcome } from '../utils/rankEvents'
 import { Plus, KeyRound, ChevronRight, Moon, Sun, LogOut } from 'lucide-react'
 
 interface Room {
@@ -194,6 +195,11 @@ export default function HomePage() {
       const data = roomDoc.data()
       if (!data.memberIds?.includes(user.uid)) {
         await updateDoc(roomDoc.ref, { memberIds: arrayUnion(user.uid) })
+        await postJoinWelcome(roomDoc.id, {
+          uid: user.uid,
+          name: user.displayName || '친구',
+          photoURL: user.photoURL,
+        })
       }
       setShowJoinByCode(false)
       resetJoinForm()

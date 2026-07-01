@@ -3,7 +3,7 @@ import { db } from '../firebase'
 
 export type RankEventKind =
   | 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion'
-  | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion'
+  | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join'
 
 export async function postRankEvent(
   roomId: string,
@@ -20,4 +20,17 @@ export async function postRankEvent(
     authorPhotoURL: author.photoURL || '',
     createdAt: serverTimestamp(),
   })
+}
+
+export async function postJoinWelcome(
+  roomId: string,
+  user: { uid: string; name: string; photoURL?: string | null },
+) {
+  const name = user.name.trim() || '친구'
+  await postRankEvent(
+    roomId,
+    { uid: user.uid, name, photoURL: user.photoURL },
+    'join',
+    `${name}님이 입장했습니다. 환영합니다! 👋`,
+  )
 }

@@ -22,6 +22,7 @@ import { useUserProfiles } from '../hooks/useUserProfiles'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 import { awardMessagePoints } from '../utils/roomPoints'
+import { postJoinWelcome } from '../utils/rankEvents'
 import type { RoomRankData } from '../utils/roomPoints'
 import { getAvailableReactions, getRankAvatarClass, getRankBubbleClass, getRankPerks, getRankLevel } from '../utils/rankSystem'
 import {
@@ -62,7 +63,7 @@ interface Message {
   replyTo?: ReplyTo
   type?: 'rank_event'
   messageType?: 'rank_event' | 'poll'
-  event?: 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion' | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion'
+  event?: 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion' | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join'
   pollQuestion?: string
   pollOptions?: string[]
   pollVotes?: Record<string, string[]>
@@ -565,6 +566,11 @@ export default function RoomPage() {
     setJoinPasswordError('')
     try {
       await updateDoc(doc(db, 'rooms', roomId), { memberIds: arrayUnion(user.uid) })
+      await postJoinWelcome(roomId, {
+        uid: user.uid,
+        name: user.displayName || '친구',
+        photoURL: user.photoURL,
+      })
       setJoinPassword('')
     } catch {
       setJoinPasswordError('참여에 실패했어요. 다시 시도해주세요.')
