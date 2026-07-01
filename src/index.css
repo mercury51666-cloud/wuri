@@ -409,34 +409,455 @@ html, body {
   100% { background-position: -200% 0; }
 }
 
-.location-map .leaflet-container {
-  font-family: inherit;
-  background: var(--surface-2);
-}
-.location-map .leaflet-control-attribution {
-  font-size: 9px;
-  line-height: 1.3;
-  padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.88) !important;
-  border-radius: 8px 0 0 0;
-  color: var(--text-muted);
-}
-.dark .location-map .leaflet-control-attribution {
-  background: rgba(20, 20, 20, 0.82) !important;
-  color: #94a3b8;
-}
-.location-map .leaflet-control-zoom {
-  border: none !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
+/* ── Zenly-style location map ── */
+.zenly-map-shell {
+  border-radius: 24px;
   overflow: hidden;
+  background: linear-gradient(145deg, #fff5f8 0%, #f3f0ff 50%, #eef8ff 100%);
+  border: 1px solid rgba(255, 107, 157, 0.12);
+  box-shadow: 0 8px 32px rgba(167, 139, 250, 0.12);
 }
-.location-map .leaflet-control-zoom a {
-  color: var(--text);
-  background: var(--surface) !important;
-  border-bottom: 1px solid var(--border) !important;
+.dark .zenly-map-shell {
+  background: linear-gradient(145deg, #1a1225 0%, #12182a 50%, #0f1a20 100%);
+  border-color: rgba(167, 139, 250, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
-.location-map .leaflet-popup-content-wrapper {
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
+.zenly-map-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+.zenly-map-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.02em;
+}
+.dark .zenly-map-title { color: #f9fafb; }
+.zenly-map-title-emoji { font-size: 20px; }
+.zenly-map-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+.dark .zenly-map-subtitle { color: #94a3b8; }
+.zenly-share-btn {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, #ff6b9d, #a78bfa);
+  box-shadow: 0 4px 14px rgba(255, 107, 157, 0.35);
+  transition: transform 0.15s, opacity 0.15s;
+}
+.zenly-share-btn:active { transform: scale(0.96); }
+.zenly-share-btn:disabled { opacity: 0.6; }
+.zenly-share-btn-off {
+  background: linear-gradient(135deg, #64748b, #475569);
+  box-shadow: 0 4px 14px rgba(71, 85, 105, 0.25);
+}
+.zenly-map-frame {
+  position: relative;
+  margin: 0 12px 12px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+.dark .zenly-map-frame {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+.zenly-map-frame .leaflet-container {
+  font-family: inherit;
+  background: #e8f4f8;
+  border-radius: 20px;
+}
+.dark .zenly-map-frame .leaflet-container { background: #0f172a; }
+.zenly-map-frame .leaflet-control-attribution {
+  font-size: 8px;
+  line-height: 1.2;
+  padding: 2px 5px;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-radius: 8px 0 0 0;
+  color: #94a3b8;
+  margin: 0 !important;
+}
+.dark .zenly-map-frame .leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.75) !important;
+}
+.zenly-map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(2px);
+  text-align: center;
+  padding: 24px;
+}
+.dark .zenly-map-empty { background: rgba(15, 23, 42, 0.55); }
+.zenly-map-empty-emoji { font-size: 40px; margin-bottom: 8px; }
+.zenly-map-empty p {
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+.dark .zenly-map-empty p { color: #e5e7eb; }
+.zenly-map-empty-hint {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #9ca3af !important;
+}
+.zenly-friends-strip {
+  padding: 0 12px 14px;
+}
+.zenly-friends-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+.zenly-friends-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.zenly-friends-scroll::-webkit-scrollbar { display: none; }
+.zenly-friend-chip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+}
+.zenly-friend-avatar {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 18px;
+}
+.dark .zenly-friend-avatar { border-color: rgba(255, 255, 255, 0.2); }
+.zenly-friend-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.zenly-friend-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background: #34d399;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+.zenly-friend-chip-me .zenly-friend-avatar {
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.5);
+}
+.zenly-friend-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dark .zenly-friend-name { color: #e5e7eb; }
+.zenly-friend-time {
+  font-size: 10px;
+  color: #9ca3af;
+}
+.zenly-marker-leaflet { background: transparent !important; border: none !important; }
+.zenly-marker-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.zenly-marker-stack {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+.zenly-marker-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--zenly-color, #a78bfa);
+  opacity: 0.35;
+  animation: zenlyPulse 2.2s ease-out infinite;
+}
+.zenly-marker-me-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #ff6b9d;
+  animation: zenlyMeRing 1.8s ease-in-out infinite;
+}
+@keyframes zenlyPulse {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes zenlyMeRing {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.06); }
+}
+.zenly-marker-avatar {
+  position: relative;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  background: var(--zenly-color, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zenly-marker-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.zenly-marker-initial {
+  color: white;
+  font-size: 18px;
+  font-weight: 800;
+}
+.zenly-marker-name {
+  margin-top: 4px;
+  padding: 3px 10px;
+  background: white;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #374151;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dark .zenly-marker-name {
+  background: rgba(30, 41, 59, 0.95);
+  color: #f1f5f9;
+}
+
+/* ── Zenly-style mood board ── */
+.zenly-mood-picker {
+  border-radius: 24px;
+  padding: 20px;
+  background: linear-gradient(160deg, #fff0f5 0%, #f5f0ff 100%);
+  border: 1px solid rgba(255, 107, 157, 0.1);
+}
+.dark .zenly-mood-picker {
+  background: linear-gradient(160deg, #1f1528 0%, #151a28 100%);
+  border-color: rgba(167, 139, 250, 0.15);
+}
+.zenly-mood-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.02em;
+}
+.dark .zenly-mood-title { color: #f9fafb; }
+.zenly-mood-date {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+.zenly-mood-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+.zenly-mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 4px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.dark .zenly-mood-btn { background: rgba(255, 255, 255, 0.06); }
+.zenly-mood-btn:active { transform: scale(0.92); }
+.zenly-mood-btn-active {
+  background: white;
+  box-shadow: 0 0 0 3px #ff6b9d, 0 8px 20px rgba(255, 107, 157, 0.25);
+  transform: scale(1.04);
+}
+.dark .zenly-mood-btn-active {
+  background: rgba(255, 107, 157, 0.15);
+  box-shadow: 0 0 0 3px #ff6b9d;
+}
+.zenly-mood-emoji { font-size: 28px; line-height: 1; }
+.zenly-mood-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+}
+.dark .zenly-mood-label { color: #9ca3af; }
+.zenly-mood-mine {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #a78bfa;
+}
+.zenly-mood-board,
+.zenly-mood-history {
+  border-radius: 24px;
+  overflow: hidden;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+.dark .zenly-mood-board,
+.dark .zenly-mood-history {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.zenly-mood-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.dark .zenly-mood-board-head { border-color: rgba(255, 255, 255, 0.06); }
+.zenly-mood-board-head h3 {
+  font-size: 14px;
+  font-weight: 800;
+  color: #374151;
+}
+.dark .zenly-mood-board-head h3 { color: #e5e7eb; }
+.zenly-mood-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f0ff;
+  color: #a78bfa;
+}
+.dark .zenly-mood-count {
+  background: rgba(167, 139, 250, 0.15);
+}
+.zenly-mood-empty {
+  padding: 32px 16px;
+  text-align: center;
+}
+.zenly-mood-empty span { font-size: 36px; }
+.zenly-mood-empty p {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b7280;
+}
+.dark .zenly-mood-empty p { color: #9ca3af; }
+.zenly-mood-empty-hint {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #9ca3af !important;
+}
+.zenly-mood-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  justify-content: center;
+}
+.zenly-mood-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #faf5ff, #fff5f8);
+  min-width: 72px;
+  transition: transform 0.15s;
+}
+.dark .zenly-mood-bubble {
+  background: linear-gradient(145deg, rgba(167, 139, 250, 0.12), rgba(255, 107, 157, 0.08));
+}
+.zenly-mood-bubble-me {
+  box-shadow: 0 0 0 2px #ff6b9d;
+}
+.zenly-mood-bubble-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e9d5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #7c3aed;
+  font-size: 16px;
+}
+.zenly-mood-bubble-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.zenly-mood-bubble-emoji { font-size: 32px; line-height: 1; }
+.zenly-mood-bubble-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dark .zenly-mood-bubble-name { color: #d1d5db; }
+.zenly-mood-history-list { padding: 8px 0; }
+.zenly-mood-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+.zenly-mood-history-emoji { font-size: 24px; }
+.zenly-mood-history-date {
+  font-size: 13px;
+  color: #6b7280;
+}
+.dark .zenly-mood-history-date { color: #9ca3af; }
+.zenly-mood-footer {
+  text-align: center;
+  font-size: 11px;
+  color: #9ca3af;
+  padding-bottom: 8px;
 }

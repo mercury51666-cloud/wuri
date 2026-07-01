@@ -50,6 +50,6 @@ export const TAB_TITLES: Record<RoomTab, string> = {
   more: '더보기',
   mood: '기분',
   mission: '미션',
-  location: '위치',
+  location: '친구 지도',
   stats: '계급',
 }

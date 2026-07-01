@@ -33,9 +33,9 @@ interface Props {
 }
 
 const FEATURES: { id: MoreSubTab; label: string; desc: string; Icon: typeof Smile; color: string }[] = [
-  { id: 'mood', label: '기분', desc: '오늘 기분 공유', Icon: Smile, color: 'bg-pink-500/10 text-pink-500' },
-  { id: 'mission', label: '미션', desc: '사진 미션', Icon: Target, color: 'bg-amber-500/10 text-amber-500' },
-  { id: 'location', label: '위치', desc: '위치 공유', Icon: MapPin, color: 'bg-blue-500/10 text-blue-500' },
+  { id: 'mood', label: '기분', desc: '오늘 mood 남기기', Icon: Smile, color: 'bg-pink-500/10 text-pink-500' },
+  { id: 'mission', label: '미션', desc: '사진 미션 도전', Icon: Target, color: 'bg-amber-500/10 text-amber-500' },
+  { id: 'location', label: '친구 지도', desc: '젠리처럼 위치 보기', Icon: MapPin, color: 'bg-blue-500/10 text-blue-500' },
   { id: 'stats', label: '계급', desc: '활동 & 순위', Icon: Medal, color: 'bg-emerald-500/10 text-emerald-500' },
 ]
 
