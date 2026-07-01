@@ -6,12 +6,14 @@ import {
   onSnapshot,
   addDoc,
   deleteDoc,
+  getDocs,
   doc,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useToast } from '../contexts/ToastContext'
+import EventRsvp, { UpcomingRsvp } from './EventRsvp'
 
 interface Props {
   roomId: string
@@ -147,6 +149,8 @@ export default function ScheduleCalendar({ roomId }: Props) {
   const removeEvent = async (ev: ScheduleEvent) => {
     if (!confirm(`"${ev.title}" 약속을 삭제할까요?`)) return
     try {
+      const rsvpSnap = await getDocs(collection(db, 'rooms', roomId, 'events', ev.id, 'rsvp'))
+      await Promise.all(rsvpSnap.docs.map((d) => deleteDoc(d.ref)))
       await deleteDoc(doc(db, 'rooms', roomId, 'events', ev.id))
       toast('약속을 삭제했어요')
     } catch {
@@ -166,11 +170,16 @@ export default function ScheduleCalendar({ roomId }: Props) {
             {upcoming.slice(0, 3).map((ev) => {
               const days = getDaysUntil(ev.date)
               return (
-                <div key={ev.id} className="flex items-center gap-3 bg-white/15 rounded-xl px-3 py-2">
-                  <span className="text-sm font-black shrink-0">{dDayLabel(days)}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">{ev.title}</p>
-                    <p className="text-xs opacity-80">{formatDisplayDate(ev.date)}{ev.time ? ` · ${ev.time}` : ''}</p>
+                <div key={ev.id} className="bg-white/15 rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-black shrink-0">{dDayLabel(days)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold truncate">{ev.title}</p>
+                      <p className="text-xs opacity-80">{formatDisplayDate(ev.date)}{ev.time ? ` · ${ev.time}` : ''}</p>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 pl-12">
+                    <UpcomingRsvp roomId={roomId} eventId={ev.id} />
                   </div>
                 </div>
               )
@@ -259,22 +268,25 @@ export default function ScheduleCalendar({ roomId }: Props) {
             {selectedEvents
               .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
               .map((ev) => (
-                <div key={ev.id} className="px-4 py-3 flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-800 dark:text-white">{ev.title}</p>
-                    {ev.time && <p className="text-sm text-violet-500 dark:text-violet-400 mt-0.5">🕐 {ev.time}</p>}
-                    {ev.memo && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ev.memo}</p>}
-                    <p className="text-xs text-gray-400 mt-1">{ev.authorName}이(가) 추가</p>
+                <div key={ev.id} className="px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 dark:text-white">{ev.title}</p>
+                      {ev.time && <p className="text-sm text-violet-500 dark:text-violet-400 mt-0.5">🕐 {ev.time}</p>}
+                      {ev.memo && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ev.memo}</p>}
+                      <p className="text-xs text-gray-400 mt-1">{ev.authorName}이(가) 추가</p>
+                    </div>
+                    {ev.authorId === user?.uid && (
+                      <button
+                        type="button"
+                        onClick={() => removeEvent(ev)}
+                        className="text-xs text-gray-400 hover:text-rose-500 px-2 py-1 shrink-0"
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
-                  {ev.authorId === user?.uid && (
-                    <button
-                      type="button"
-                      onClick={() => removeEvent(ev)}
-                      className="text-xs text-gray-400 hover:text-rose-500 px-2 py-1 shrink-0"
-                    >
-                      삭제
-                    </button>
-                  )}
+                  <EventRsvp roomId={roomId} eventId={ev.id} user={user} />
                 </div>
               ))}
           </div>

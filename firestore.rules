@@ -72,6 +72,11 @@ service cloud.firestore {
         allow read: if isMember(roomId);
         allow create: if isMember(roomId);
         allow update, delete: if isMember(roomId) && request.auth.uid == resource.data.authorId;
+
+        match /rsvp/{userId} {
+          allow read: if isMember(roomId);
+          allow write: if isMember(roomId) && request.auth.uid == userId;
+        }
       }
     }
   }
