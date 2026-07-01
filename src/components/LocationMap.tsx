@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { doc, onSnapshot, setDoc, deleteDoc, collection } from 'firebase/firestore'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -6,19 +6,13 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useToast } from '../contexts/ToastContext'
+import { reverseGeocodeKo } from '../utils/reverseGeocodeKo'
 import 'leaflet/dist/leaflet.css'
 
 const MAP_TILES = {
-  light: {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  },
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  },
+  url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 기여자',
 } as const
 
 const COLORS = ['#FF6B9D', '#A78BFA', '#60A5FA', '#34D399', '#FBBF24', '#FB7185', '#22D3EE', '#A3E635']
@@ -27,27 +21,39 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-function makeZenlyIcon(photoURL: string, name: string, color: string, isMe: boolean) {
+function makeZenlyIcon(
+  photoURL: string,
+  name: string,
+  color: string,
+  isMe: boolean,
+  placeName?: string
+) {
   const shortName = name.length > 6 ? `${name.slice(0, 5)}…` : name
   const initials = name.slice(0, 1)
   const inner = photoURL
     ? `<img src="${escapeHtml(photoURL)}" alt="" />`
     : `<span class="zenly-marker-initial">${escapeHtml(initials)}</span>`
   const meRing = isMe ? '<span class="zenly-marker-me-ring"></span>' : ''
+  const placeHtml = placeName
+    ? `<span class="zenly-marker-place">${escapeHtml(placeName)}</span>`
+    : ''
+  const hasPlace = Boolean(placeName)
+
   return L.divIcon({
     className: 'zenly-marker-leaflet',
     html: `
-      <div class="zenly-marker-wrap">
-        <div class="zenly-marker-stack" style="--zenly-color:${color}">
+      <div class="zenly-marker-wrap" style="--zenly-color:${color}">
+        <div class="zenly-marker-stack">
           <span class="zenly-marker-pulse"></span>
           ${meRing}
           <div class="zenly-marker-avatar">${inner}</div>
         </div>
         <span class="zenly-marker-name">${escapeHtml(shortName)}</span>
+        ${placeHtml}
       </div>
     `,
-    iconSize: [72, 78],
-    iconAnchor: [36, 52],
+    iconSize: [88, hasPlace ? 96 : 78],
+    iconAnchor: [44, hasPlace ? 58 : 52],
   })
 }
 
@@ -91,10 +97,10 @@ export default function LocationMap({ roomId, visible = true }: Props) {
   const { user } = useAuthState()
   const { dark } = useTheme()
   const { toast } = useToast()
-  const tiles = MAP_TILES[dark ? 'dark' : 'light']
   const [sharing, setSharing] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
   const [locations, setLocations] = useState<LocationData[]>([])
+  const [placeNames, setPlaceNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [myCenter, setMyCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [, setTick] = useState(0)
@@ -111,6 +117,22 @@ export default function LocationMap({ roomId, visible = true }: Props) {
       )
     })
   }, [roomId])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      for (const loc of locations) {
+        if (cancelled) break
+        const place = await reverseGeocodeKo(loc.lat, loc.lng)
+        if (!cancelled) {
+          setPlaceNames((prev) =>
+            prev[loc.userId] === place ? prev : { ...prev, [loc.userId]: place }
+          )
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [locations])
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 5000)
@@ -190,8 +212,13 @@ export default function LocationMap({ roomId, visible = true }: Props) {
     return b.updatedAt - a.updatedAt
   })
 
+  const frameClass = dark ? 'zenly-map-frame-dark' : 'zenly-map-frame-light'
+
   return (
     <div className="zenly-map-shell">
+      <div className="zenly-map-deco zenly-map-deco-a">🌸</div>
+      <div className="zenly-map-deco zenly-map-deco-b">✨</div>
+
       <div className="zenly-map-header">
         <div>
           <p className="zenly-map-title">
@@ -200,7 +227,9 @@ export default function LocationMap({ roomId, visible = true }: Props) {
           </p>
           <p className="zenly-map-subtitle">
             {sharing
-              ? '지금 내 위치를 친구들에게 보여주는 중이에요'
+              ? myLoc && placeNames[myLoc.userId]
+                ? `지금 ${placeNames[myLoc.userId]}에 있어요`
+                : '지금 내 위치를 친구들에게 보여주는 중이에요'
               : locations.length > 0
               ? `${locations.length}명이 근처에 있어요`
               : '아직 아무도 안 왔어요… 먼저 공유해볼까?'}
@@ -216,52 +245,52 @@ export default function LocationMap({ roomId, visible = true }: Props) {
         </button>
       </div>
 
-      <div className="zenly-map-frame">
-        <MapContainer
-          center={[center.lat, center.lng]}
-          zoom={15}
-          style={{ height: '360px', width: '100%' }}
-          ref={mapRef}
-          zoomControl={false}
-        >
-          <TileLayer
-            key={dark ? 'dark' : 'light'}
-            attribution={tiles.attribution}
-            url={tiles.url}
-          />
-          <MapResizer />
-          {myLoc && <RecenterMap lat={myLoc.lat} lng={myLoc.lng} />}
-          {locations.map((loc) => (
-            <Marker
-              key={loc.userId}
-              position={[loc.lat, loc.lng]}
-              icon={makeZenlyIcon(
-                loc.photoURL,
-                loc.userName,
-                colorMap[loc.userId] ?? COLORS[0],
-                loc.userId === user?.uid
-              )}
-            />
-          ))}
-        </MapContainer>
+      <div className={`zenly-map-frame ${frameClass}`}>
+        <div className="zenly-map-inner">
+          <MapContainer
+            center={[center.lat, center.lng]}
+            zoom={15}
+            style={{ height: '360px', width: '100%' }}
+            ref={mapRef}
+            zoomControl={false}
+          >
+            <TileLayer attribution={MAP_TILES.attribution} url={MAP_TILES.url} />
+            <MapResizer />
+            {myLoc && <RecenterMap lat={myLoc.lat} lng={myLoc.lng} />}
+            {locations.map((loc) => (
+              <Marker
+                key={`${loc.userId}-${placeNames[loc.userId] ?? ''}`}
+                position={[loc.lat, loc.lng]}
+                icon={makeZenlyIcon(
+                  loc.photoURL,
+                  loc.userName,
+                  colorMap[loc.userId] ?? COLORS[0],
+                  loc.userId === user?.uid,
+                  placeNames[loc.userId]
+                )}
+              />
+            ))}
+          </MapContainer>
 
-        {locations.length === 0 && !sharing && (
-          <div className="zenly-map-empty">
-            <span className="zenly-map-empty-emoji">🗺️</span>
-            <p>여기서 친구들 위치를 볼 수 있어요</p>
-            <p className="zenly-map-empty-hint">젠리처럼 귀엽게, 실시간으로!</p>
-          </div>
-        )}
+          {locations.length === 0 && !sharing && (
+            <div className="zenly-map-empty">
+              <span className="zenly-map-empty-emoji">🗺️</span>
+              <p>여기서 친구들 위치를 볼 수 있어요</p>
+              <p className="zenly-map-empty-hint">동·구 이름까지 한글로 보여줘요!</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {sortedLocations.length > 0 && (
         <div className="zenly-friends-strip">
-          <p className="zenly-friends-label">지금 여기 있는 친구</p>
+          <p className="zenly-friends-label">📍 지금 여기 있는 친구</p>
           <div className="zenly-friends-scroll">
             {sortedLocations.map((loc) => (
               <div
                 key={loc.userId}
                 className={`zenly-friend-chip ${loc.userId === user?.uid ? 'zenly-friend-chip-me' : ''}`}
+                style={{ '--chip-color': colorMap[loc.userId] } as CSSProperties}
               >
                 <div
                   className="zenly-friend-avatar"
@@ -276,6 +305,9 @@ export default function LocationMap({ roomId, visible = true }: Props) {
                 </div>
                 <span className="zenly-friend-name">
                   {loc.userId === user?.uid ? '나' : loc.userName}
+                </span>
+                <span className="zenly-friend-place">
+                  {placeNames[loc.userId] ?? '찾는 중…'}
                 </span>
                 <span className="zenly-friend-time">{timeAgo(loc.updatedAt)}</span>
               </div>

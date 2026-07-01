@@ -411,16 +411,44 @@ html, body {
 
 /* ── Zenly-style location map ── */
 .zenly-map-shell {
+  position: relative;
   border-radius: 24px;
   overflow: hidden;
-  background: linear-gradient(145deg, #fff5f8 0%, #f3f0ff 50%, #eef8ff 100%);
-  border: 1px solid rgba(255, 107, 157, 0.12);
-  box-shadow: 0 8px 32px rgba(167, 139, 250, 0.12);
+  background: linear-gradient(145deg, #fff0f6 0%, #f3e8ff 35%, #e0f2fe 70%, #ecfdf5 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    0 8px 32px rgba(255, 107, 157, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.zenly-map-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  padding: 2px;
+  background: linear-gradient(135deg, #ff6b9d, #c084fc, #60a5fa, #4ade80, #fbbf24);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 .dark .zenly-map-shell {
-  background: linear-gradient(145deg, #1a1225 0%, #12182a 50%, #0f1a20 100%);
-  border-color: rgba(167, 139, 250, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(145deg, #2a1530 0%, #1a1f3a 45%, #0f2a2a 100%);
+  box-shadow: 0 8px 32px rgba(167, 139, 250, 0.2);
+}
+.zenly-map-deco {
+  position: absolute;
+  font-size: 18px;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 1;
+}
+.zenly-map-deco-a { top: 10px; right: 18px; animation: zenlyFloat 3s ease-in-out infinite; }
+.zenly-map-deco-b { bottom: 72px; left: 14px; animation: zenlyFloat 3.6s ease-in-out infinite reverse; }
+@keyframes zenlyFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(8deg); }
 }
 .zenly-map-header {
   display: flex;
@@ -467,20 +495,35 @@ html, body {
 .zenly-map-frame {
   position: relative;
   margin: 0 12px 12px;
-  border-radius: 20px;
+  padding: 4px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #ff6b9d, #c084fc, #60a5fa, #4ade80);
+  box-shadow: 0 6px 24px rgba(96, 165, 250, 0.25);
+}
+.zenly-map-inner {
+  position: relative;
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+  background: #dbeafe;
+}
+.zenly-map-frame-light .leaflet-tile-pane {
+  filter: saturate(1.45) contrast(0.9) brightness(1.06) hue-rotate(-4deg);
+}
+.zenly-map-frame-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(185deg) saturate(1.35) brightness(0.86) contrast(0.92);
 }
 .dark .zenly-map-frame {
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #fb7185, #a78bfa, #38bdf8, #34d399);
+  box-shadow: 0 6px 24px rgba(167, 139, 250, 0.3);
 }
-.zenly-map-frame .leaflet-container {
+.dark .zenly-map-inner { background: #0f172a; }
+.zenly-map-inner .leaflet-container {
   font-family: inherit;
-  background: #e8f4f8;
-  border-radius: 20px;
+  background: #dbeafe;
+  border-radius: 18px;
 }
-.dark .zenly-map-frame .leaflet-container { background: #0f172a; }
-.zenly-map-frame .leaflet-control-attribution {
+.dark .zenly-map-inner .leaflet-container { background: #0f172a; }
+.zenly-map-inner .leaflet-control-attribution {
   font-size: 8px;
   line-height: 1.2;
   padding: 2px 5px;
@@ -489,7 +532,7 @@ html, body {
   color: #94a3b8;
   margin: 0 !important;
 }
-.dark .zenly-map-frame .leaflet-control-attribution {
+.dark .zenly-map-inner .leaflet-control-attribution {
   background: rgba(15, 23, 42, 0.75) !important;
 }
 .zenly-map-empty {
@@ -542,8 +585,18 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  min-width: 64px;
+  gap: 3px;
+  min-width: 78px;
+  padding: 8px 6px 6px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 4px 14px rgba(167, 139, 250, 0.12);
+}
+.dark .zenly-friend-chip {
+  background: rgba(255, 255, 255, 0.06);
+}
+.zenly-friend-chip-me {
+  background: linear-gradient(160deg, rgba(255, 107, 157, 0.15), rgba(167, 139, 250, 0.12));
 }
 .zenly-friend-avatar {
   position: relative;
@@ -581,14 +634,29 @@ html, body {
 }
 .zenly-friend-name {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: #374151;
-  max-width: 64px;
+  max-width: 74px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .dark .zenly-friend-name { color: #e5e7eb; }
+.zenly-friend-place {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--chip-color, #a78bfa);
+  max-width: 74px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chip-color, #a78bfa) 14%, white);
+}
+.dark .zenly-friend-place {
+  background: color-mix(in srgb, var(--chip-color, #a78bfa) 22%, transparent);
+}
 .zenly-friend-time {
   font-size: 10px;
   color: #9ca3af;
@@ -661,7 +729,21 @@ html, body {
   color: #374151;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   white-space: nowrap;
-  max-width: 72px;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zenly-marker-place {
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--zenly-color, #a78bfa), #ff6b9d);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  max-width: 84px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
