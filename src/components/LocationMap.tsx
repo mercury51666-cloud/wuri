@@ -4,7 +4,21 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
+import { useTheme } from '../contexts/ThemeContext'
 import 'leaflet/dist/leaflet.css'
+
+const MAP_TILES = {
+  light: {
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+} as const
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -72,6 +86,8 @@ interface Props {
 
 export default function LocationMap({ roomId, visible = true }: Props) {
   const { user } = useAuthState()
+  const { dark } = useTheme()
+  const tiles = MAP_TILES[dark ? 'dark' : 'light']
   const [sharing, setSharing] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
   const [locations, setLocations] = useState<LocationData[]>([])
@@ -165,7 +181,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
   locations.forEach((l, i) => { colorMap[l.userId] = COLORS[i % COLORS.length] })
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700" style={{ isolation: 'isolate' }}>
+    <div className="location-map bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700" style={{ isolation: 'isolate' }}>
       <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">
         <div>
           <p className="font-bold text-gray-800 dark:text-gray-100 text-sm flex items-center gap-1.5">
@@ -201,8 +217,9 @@ export default function LocationMap({ roomId, visible = true }: Props) {
         ref={mapRef}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={dark ? 'dark' : 'light'}
+          attribution={tiles.attribution}
+          url={tiles.url}
         />
         <MapResizer />
         {myLoc && <RecenterMap lat={myLoc.lat} lng={myLoc.lng} />}
