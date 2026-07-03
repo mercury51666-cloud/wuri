@@ -1365,6 +1365,39 @@ html, body {
 .room-bgm-player-actions {
   flex-shrink: 0;
 }
+.room-bgm-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.room-bgm-player-ctrl {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--surface-2);
+  color: var(--text);
+  flex-shrink: 0;
+}
+.room-bgm-player-ctrl:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.room-bgm-player-ctrl-play {
+  background: var(--brand);
+  color: white;
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
+}
+.room-bgm-player-ctrl-mute {
+  font-size: 14px;
+}
 .room-bgm-player-unmute {
   display: inline-flex;
   padding: 8px 12px;

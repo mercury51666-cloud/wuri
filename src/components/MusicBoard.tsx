@@ -193,7 +193,7 @@ export default function MusicBoard({ roomId }: Props) {
               canClear
             />
             <p className="music-bgm-hint">
-              YouTube는 영상 없이 노래만 재생돼요. 하단 바에서 🔊 소리 켜기를 눌러주세요.
+              YouTube는 영상 없이 노래만 재생돼요. 하단에서 ⏯ ⏹ ⏭ 로 조절하고 🔇 로 소리를 켜세요.
             </p>
           </>
         ) : (
