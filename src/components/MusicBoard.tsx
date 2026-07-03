@@ -193,7 +193,7 @@ export default function MusicBoard({ roomId }: Props) {
               canClear
             />
             <p className="music-bgm-hint">
-              YouTube는 채팅 화면 하단에서 자동 재생돼요. 소리가 안 나면 🔊 소리 켜기를 눌러주세요.
+              YouTube는 영상 없이 노래만 재생돼요. 하단 바에서 🔊 소리 켜기를 눌러주세요.
             </p>
           </>
         ) : (

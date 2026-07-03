@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import {
-  getSpotifyEmbedUrl,
-  getYouTubeEmbedUrl,
-  type MusicPlatform,
-} from '../utils/musicLink'
+import { getYouTubeEmbedUrl, type MusicPlatform } from '../utils/musicLink'
 
 interface RoomBgm {
   url: string
   title: string
   artist?: string
+  thumbnail?: string
   platform: MusicPlatform
   setByUserName: string
 }
@@ -21,7 +18,6 @@ interface Props {
 
 export default function RoomBgmPlayer({ roomId }: Props) {
   const [bgm, setBgm] = useState<RoomBgm | null>(null)
-  const [expanded, setExpanded] = useState(true)
   const [muted, setMuted] = useState(true)
 
   useEffect(() => {
@@ -34,24 +30,31 @@ export default function RoomBgmPlayer({ roomId }: Props) {
 
   const youtubeEmbed =
     bgm.platform === 'youtube'
-      ? getYouTubeEmbedUrl(bgm.url, { autoplay: true, mute: muted, loop: true })
+      ? getYouTubeEmbedUrl(bgm.url, { autoplay: true, mute: muted, loop: true, controls: false })
       : null
-  const spotifyEmbed =
-    bgm.platform === 'spotify' ? getSpotifyEmbedUrl(bgm.url) : null
-  const canEmbed = Boolean(youtubeEmbed || spotifyEmbed)
 
   return (
-    <div className={`room-bgm-player ${expanded ? 'room-bgm-player-open' : 'room-bgm-player-mini'}`}>
-      <div className="room-bgm-player-head">
-        <button
-          type="button"
-          className="room-bgm-player-info"
-          onClick={() => setExpanded((v) => !v)}
-        >
+    <div className="room-bgm-player">
+      <div className="room-bgm-player-bar">
+        <div className="room-bgm-player-art">
+          {bgm.thumbnail ? (
+            <img src={bgm.thumbnail} alt="" />
+          ) : (
+            <span>🎵</span>
+          )}
+          {youtubeEmbed && (
+            <span className="room-bgm-player-eq" aria-hidden>
+              <span /><span /><span />
+            </span>
+          )}
+        </div>
+
+        <div className="room-bgm-player-meta">
           <span className="room-bgm-player-badge">ON AIR</span>
-          <span className="room-bgm-player-title">{bgm.title}</span>
-          {bgm.artist && <span className="room-bgm-player-artist">{bgm.artist}</span>}
-        </button>
+          <p className="room-bgm-player-title">{bgm.title}</p>
+          {bgm.artist && <p className="room-bgm-player-artist">{bgm.artist}</p>}
+        </div>
+
         <div className="room-bgm-player-actions">
           {youtubeEmbed && muted && (
             <button
@@ -62,49 +65,29 @@ export default function RoomBgmPlayer({ roomId }: Props) {
               🔊 소리 켜기
             </button>
           )}
-          <button
-            type="button"
-            className="room-bgm-player-toggle"
-            onClick={() => setExpanded((v) => !v)}
-            aria-label={expanded ? '플레이어 접기' : '플레이어 펼치기'}
-          >
-            {expanded ? '▼' : '▲'}
-          </button>
+          {bgm.platform !== 'youtube' && (
+            <a
+              href={bgm.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="room-bgm-player-unmute"
+            >
+              ▶ 듣기
+            </a>
+          )}
         </div>
       </div>
 
-      {canEmbed && (
-        <div className={`room-bgm-player-frame ${expanded ? '' : 'room-bgm-player-frame-hidden'}`}>
-          {youtubeEmbed && (
-            <iframe
-              key={`${youtubeEmbed}-${muted ? 'm' : 'u'}`}
-              src={youtubeEmbed}
-              title={`방 BGM: ${bgm.title}`}
-              allow="autoplay; encrypted-media; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
-              loading="lazy"
-            />
-          )}
-          {spotifyEmbed && (
-            <>
-              <iframe
-                src={spotifyEmbed}
-                title={`방 BGM: ${bgm.title}`}
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-              />
-              <p className="room-bgm-player-hint">Spotify는 ▶ 버튼을 눌러 재생해요</p>
-            </>
-          )}
-        </div>
-      )}
-
-      {expanded && !canEmbed && (
-        <div className="room-bgm-player-fallback">
-          <p>이 링크는 앱 안 재생을 지원하지 않아요</p>
-          <a href={bgm.url} target="_blank" rel="noopener noreferrer" className="room-bgm-player-link">
-            앱에서 열기
-          </a>
+      {youtubeEmbed && (
+        <div className="room-bgm-player-audio-engine" aria-hidden>
+          <iframe
+            key={`${youtubeEmbed}-${muted ? 'm' : 'u'}`}
+            src={youtubeEmbed}
+            title={`방 BGM: ${bgm.title}`}
+            allow="autoplay; encrypted-media"
+            referrerPolicy="strict-origin-when-cross-origin"
+            tabIndex={-1}
+          />
         </div>
       )}
     </div>

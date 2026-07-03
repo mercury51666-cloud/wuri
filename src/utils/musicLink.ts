@@ -109,7 +109,7 @@ export async function resolveMusicLink(input: string): Promise<MusicMeta> {
 
 export function getYouTubeEmbedUrl(
   url: string,
-  opts?: { autoplay?: boolean; mute?: boolean; loop?: boolean },
+  opts?: { autoplay?: boolean; mute?: boolean; loop?: boolean; controls?: boolean },
 ) {
   const id = extractYouTubeId(url)
   if (!id) return null
@@ -118,10 +118,11 @@ export function getYouTubeEmbedUrl(
     mute: opts?.mute ? '1' : '0',
     loop: opts?.loop !== false ? '1' : '0',
     playlist: id,
-    controls: '1',
+    controls: opts?.controls === false ? '0' : '1',
     modestbranding: '1',
     rel: '0',
     playsinline: '1',
+    iv_load_policy: '3',
   })
   return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`
 }
