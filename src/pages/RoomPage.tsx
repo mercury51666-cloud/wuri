@@ -16,6 +16,7 @@ import RankBoard from '../components/RankBoard'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
 import MusicBoard from '../components/MusicBoard'
+import RoomBgmPlayer from '../components/RoomBgmPlayer'
 import ScheduleCalendar from '../components/ScheduleCalendar'
 import PhotoGallery from '../components/PhotoGallery'
 import RoomAvatar from '../components/RoomAvatar'
@@ -1153,6 +1154,7 @@ export default function RoomPage() {
 
       {isJoined && (
         <div className="room-bottom-dock shrink-0">
+          {roomId && <RoomBgmPlayer roomId={roomId} />}
           {activeTab === 'chat' && (
             <>
               <ChatFeatureBar

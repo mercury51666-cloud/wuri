@@ -183,14 +183,19 @@ export default function MusicBoard({ roomId }: Props) {
         </div>
 
         {roomBgm ? (
-          <MusicCard
-            entry={roomBgm}
-            subtitle={`${roomBgm.setByUserName}이(가) 설정`}
-            badge="ON AIR"
-            onOpen={() => openLink(roomBgm.url)}
-            onClear={clearRoomBgm}
-            canClear
-          />
+          <>
+            <MusicCard
+              entry={roomBgm}
+              subtitle={`${roomBgm.setByUserName}이(가) 설정 · 방 안 자동 재생`}
+              badge="ON AIR"
+              onOpen={() => openLink(roomBgm.url)}
+              onClear={clearRoomBgm}
+              canClear
+            />
+            <p className="music-bgm-hint">
+              YouTube는 채팅 화면 하단에서 자동 재생돼요. 소리가 안 나면 🔊 소리 켜기를 눌러주세요.
+            </p>
+          </>
         ) : (
           <div className="music-empty">
             <p>아직 방 BGM이 없어요</p>

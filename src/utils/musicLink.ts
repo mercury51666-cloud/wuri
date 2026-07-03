@@ -107,6 +107,31 @@ export async function resolveMusicLink(input: string): Promise<MusicMeta> {
   return { url, platform, title: host }
 }
 
+export function getYouTubeEmbedUrl(
+  url: string,
+  opts?: { autoplay?: boolean; mute?: boolean; loop?: boolean },
+) {
+  const id = extractYouTubeId(url)
+  if (!id) return null
+  const params = new URLSearchParams({
+    autoplay: opts?.autoplay !== false ? '1' : '0',
+    mute: opts?.mute ? '1' : '0',
+    loop: opts?.loop !== false ? '1' : '0',
+    playlist: id,
+    controls: '1',
+    modestbranding: '1',
+    rel: '0',
+    playsinline: '1',
+  })
+  return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`
+}
+
+export function getSpotifyEmbedUrl(url: string) {
+  const match = url.match(/spotify\.com\/(track|album|playlist|episode)\/([a-zA-Z0-9]+)/)
+  if (!match) return null
+  return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`
+}
+
 export function platformLabel(platform: MusicPlatform) {
   switch (platform) {
     case 'youtube': return 'YouTube'

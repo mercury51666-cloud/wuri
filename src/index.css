@@ -1272,3 +1272,115 @@ html, body {
   font-size: 18px;
   flex-shrink: 0;
 }
+
+.music-bgm-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* ── Room BGM player (in-room autoplay) ── */
+.room-bgm-player {
+  border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.12) 0%, var(--surface) 100%);
+}
+.room-bgm-player-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+.room-bgm-player-info {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.room-bgm-player-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #a78bfa, #ff6b9d);
+  color: white;
+  margin-right: 6px;
+}
+.room-bgm-player-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+.room-bgm-player-artist {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.room-bgm-player-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.room-bgm-player-unmute {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: white;
+  background: var(--brand);
+  white-space: nowrap;
+}
+.room-bgm-player-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.room-bgm-player-frame iframe {
+  display: block;
+  width: 100%;
+  height: 152px;
+  border: 0;
+  background: #000;
+}
+.room-bgm-player-frame-hidden {
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.room-bgm-player-frame-hidden iframe {
+  height: 152px;
+}
+.room-bgm-player-hint {
+  padding: 6px 10px 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.room-bgm-player-fallback {
+  padding: 12px 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.room-bgm-player-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand);
+}
+.room-bgm-player-mini .room-bgm-player-fallback {
+  display: none;
+}
