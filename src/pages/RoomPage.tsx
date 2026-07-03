@@ -39,7 +39,7 @@ import { useRoomExtras } from '../hooks/useRoomExtras'
 import { parseMentionIds, renderTextWithMentions } from '../utils/mentions'
 import RoomBottomNav, { TAB_TITLES, MORE_SUB_TABS, type RoomTab, type PrimaryTab, type MoreSubTab } from '../components/RoomBottomNav'
 import RoomMorePanel from '../components/RoomMorePanel'
-import { ChevronLeft, Search, Camera } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
@@ -1188,9 +1188,9 @@ export default function RoomPage() {
                 </div>
               )}
               <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2">
-                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`} aria-label="사진 보내기">
-                  <Camera size={20} className="text-[var(--text-secondary)]" />
-                  <input type="file" accept="image/*" capture="environment" className="hidden" disabled={sending || isMuted}
+                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
+                  <span className="text-lg">🖼️</span>
+                  <input type="file" accept="image/*" className="hidden" disabled={sending || isMuted}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
                   />
                 </label>
