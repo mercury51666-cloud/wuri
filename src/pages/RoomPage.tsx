@@ -810,8 +810,9 @@ export default function RoomPage() {
         </div>
       )}
 
-      {/* 헤더 */}
-      <header className="app-header safe-top sticky top-0 z-10 shrink-0">
+      {/* 상단: 헤더 + BGM */}
+      <div className="room-top-dock safe-top sticky top-0 z-10 shrink-0">
+        <header className="app-header">
         {showSearch && activeTab === 'chat' ? (
           <div className="px-3 py-2.5 flex items-center gap-2">
             <input
@@ -852,7 +853,9 @@ export default function RoomPage() {
             )}
           </div>
         )}
-      </header>
+        </header>
+        {isJoined && roomId && <RoomBgmPlayer roomId={roomId} />}
+      </div>
 
       {!isJoined ? (
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
@@ -1154,7 +1157,6 @@ export default function RoomPage() {
 
       {isJoined && (
         <div className="room-bottom-dock shrink-0">
-          {roomId && <RoomBgmPlayer roomId={roomId} />}
           {activeTab === 'chat' && (
             <>
               <ChatFeatureBar

@@ -203,6 +203,16 @@ html, body {
   border-top: 1px solid var(--border);
 }
 
+.room-top-dock {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.room-top-dock .app-header {
+  border-bottom: none;
+}
+
 .tab-bar {
   background: transparent;
   border-top: 1px solid var(--border);
@@ -1283,19 +1293,30 @@ html, body {
 /* ── Room BGM player (in-room autoplay) ── */
 .room-bgm-player {
   position: relative;
-  border-top: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(167, 139, 250, 0.14) 0%, var(--surface) 100%);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.12) 0%, transparent 100%);
 }
 .room-bgm-player-bar {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+.room-bgm-player-row-main {
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  width: 100%;
+  min-width: 0;
+}
+.room-bgm-player-row-controls {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 .room-bgm-player-art {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
