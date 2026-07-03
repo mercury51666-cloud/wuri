@@ -48,7 +48,7 @@ export default function RoomBottomNav({ activeTab, onChange }: Props) {
 export const TAB_TITLES: Record<RoomTab, string> = {
   chat: '채팅',
   gallery: '사진',
-  schedule: '일정',
+  schedule: '일정·D-day',
   more: '더보기',
   mood: '기분',
   mission: '미션',

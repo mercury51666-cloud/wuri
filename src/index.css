@@ -943,3 +943,142 @@ html, body {
   color: #9ca3af;
   padding-bottom: 8px;
 }
+
+/* ── Schedule + D-day board ── */
+.dday-board-shell {
+  border-radius: 24px;
+  padding: 16px;
+  background: linear-gradient(145deg, #f5f0ff 0%, #fff0f6 50%, #eef8ff 100%);
+  border: 1px solid rgba(167, 139, 250, 0.15);
+  box-shadow: 0 8px 24px rgba(167, 139, 250, 0.12);
+}
+.dark .dday-board-shell {
+  background: linear-gradient(145deg, #1a1528 0%, #1f1520 50%, #12182a 100%);
+  border-color: rgba(167, 139, 250, 0.2);
+}
+.dday-board-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.dday-board-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f2937;
+}
+.dark .dday-board-title { color: #f9fafb; }
+.dday-board-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+.dday-board-add {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, #a78bfa, #ff6b9d);
+}
+.dday-board-empty {
+  padding: 20px 8px;
+  text-align: center;
+}
+.dday-board-empty p {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b7280;
+}
+.dark .dday-board-empty p { color: #9ca3af; }
+.dday-board-empty-hint {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+.dday-board-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.dday-board-scroll::-webkit-scrollbar { display: none; }
+.dday-card {
+  position: relative;
+  flex-shrink: 0;
+  width: 140px;
+  padding: 12px;
+  border-radius: 18px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s;
+}
+.dday-card:active { transform: scale(0.97); }
+.dark .dday-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.dday-card-today { box-shadow: 0 0 0 2px #ff6b9d, 0 8px 20px rgba(255, 107, 157, 0.2); }
+.dday-card-soon { box-shadow: 0 0 0 2px #a78bfa; }
+.dday-card-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 900;
+  color: #7c3aed;
+  margin-bottom: 6px;
+}
+.dday-card-today .dday-card-badge { color: #ff6b9d; }
+.dday-card-past .dday-card-badge { color: #9ca3af; }
+.dday-card-emoji { font-size: 22px; display: block; margin-bottom: 4px; }
+.dday-card-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dark .dday-card-title { color: #f3f4f6; }
+.dday-card-date {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #9ca3af;
+}
+.dday-card-time {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #a78bfa;
+}
+.dday-card-pin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 12px;
+}
+.dday-inline-badge {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 900;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.dday-inline-badge.dday-card-today {
+  background: rgba(255, 107, 157, 0.15);
+  color: #ff6b9d;
+}
+.dday-inline-badge.dday-card-past {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+}
