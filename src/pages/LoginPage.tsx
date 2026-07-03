@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { useState, useEffect } from 'react'
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { auth } from '../firebase'
 import { Link2 } from 'lucide-react'
 
@@ -8,11 +8,19 @@ function isInAppBrowser() {
   return /FBAN|FBAV|Instagram|Messenger|Line|KAKAOTALK|Snapchat|TikTok|WhatsApp|Twitter|NaverApp|DaumApp/i.test(ua)
 }
 
+function isMobileSafari() {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent)
+}
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const inApp = isInAppBrowser()
+
+  useEffect(() => {
+    getRedirectResult(auth).catch(() => {})
+  }, [])
 
   const handleGoogle = async () => {
     setError('')
@@ -20,10 +28,23 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
     try {
+      if (isMobileSafari()) {
+        await signInWithRedirect(auth, provider)
+        return
+      }
       await signInWithPopup(auth, provider)
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
-      if (code !== 'auth/popup-closed-by-user') setError('로그인에 실패했어요. 다시 시도해주세요.')
+      if (code === 'auth/popup-blocked') {
+        try {
+          await signInWithRedirect(auth, provider)
+          return
+        } catch {
+          setError('로그인 창을 열 수 없어요. Safari/Chrome에서 다시 시도해주세요.')
+        }
+      } else if (code !== 'auth/popup-closed-by-user') {
+        setError('로그인에 실패했어요. 다시 시도해주세요.')
+      }
     } finally {
       setLoading(false)
     }

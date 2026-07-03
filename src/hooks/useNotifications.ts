@@ -3,43 +3,38 @@ import { useEffect, useRef } from 'react'
 const isNotificationSupported = typeof window !== 'undefined' && 'Notification' in window
 
 export function useNotifications(roomName: string) {
-  const permissionRef = useRef(isNotificationSupported ? Notification.permission : 'denied')
-
-  const requestPermission = async () => {
-    if (!isNotificationSupported) return
-    if (Notification.permission === 'default') {
-      const result = await Notification.requestPermission()
-      permissionRef.current = result
-    }
-  }
-
   const notify = (authorName: string, message: string) => {
     if (!isNotificationSupported) return
-    if (permissionRef.current === 'granted' && document.hidden) {
-      new Notification(`${roomName} — ${authorName}`, {
-        body: message,
-        icon: '/favicon.svg',
-        badge: '/favicon.svg',
-      })
-    }
+    if (Notification.permission !== 'granted') return
+    if (!document.hidden) return
+    new Notification(`${roomName} — ${authorName}`, {
+      body: message,
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
+    })
   }
 
-  return { requestPermission, notify }
+  return { notify }
+}
+
+export async function requestNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
+  if (!isNotificationSupported) return 'unsupported'
+  if (Notification.permission === 'granted') return 'granted'
+  if (Notification.permission === 'denied') return 'denied'
+  return Notification.requestPermission()
 }
 
 export function useMessageNotifications(
   messages: { id: string; authorName: string; text: string; authorId: string }[],
   myUid: string | undefined,
-  roomName: string
+  roomName: string,
+  enabled: boolean,
 ) {
-  const { requestPermission, notify } = useNotifications(roomName)
+  const { notify } = useNotifications(roomName)
   const prevCountRef = useRef(messages.length)
 
   useEffect(() => {
-    requestPermission()
-  }, [])
-
-  useEffect(() => {
+    if (!enabled) return
     if (messages.length > prevCountRef.current) {
       const latest = messages[messages.length - 1]
       if (latest && latest.authorId !== myUid && latest.text) {
@@ -47,5 +42,5 @@ export function useMessageNotifications(
       }
     }
     prevCountRef.current = messages.length
-  }, [messages.length])
+  }, [messages, myUid, enabled, roomName])
 }

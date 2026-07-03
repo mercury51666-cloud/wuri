@@ -78,7 +78,7 @@ export default function HomePage() {
   const handlePhotoSelect = (file: File | null) => {
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      alert('이미지 파일만 선택할 수 있어요.')
+      toast('이미지 파일만 선택할 수 있어요')
       return
     }
     setRoomPhotoFile(file)
@@ -103,6 +103,7 @@ export default function HomePage() {
         id: doc.id,
         ...doc.data(),
       })) as Room[]
+      data.sort((a, b) => toMs(b.createdAt as { seconds: number }) - toMs(a.createdAt as { seconds: number }))
       setRooms(data)
       setLoadingRooms(false)
     })
@@ -303,16 +304,15 @@ export default function HomePage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold truncate ${(unreadCounts[room.id] ?? 0) > 0 ? 'text-[var(--text)]' : 'text-[var(--text)]'}`}>{room.name}</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">멤버 {room.memberIds?.length ?? 1}명</p>
+                  <p className="font-bold truncate text-[var(--text)]">{room.name}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    멤버 {room.memberIds?.length ?? 1}명
+                    {(unreadCounts[room.id] ?? 0) > 0 && (
+                      <span className="text-rose-500 font-semibold ml-1">· 새 메시지</span>
+                    )}
+                  </p>
                 </div>
-                {(unreadCounts[room.id] ?? 0) > 0 ? (
-                  <span className="min-w-[22px] h-[22px] px-1.5 bg-rose-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center shrink-0">
-                    {(unreadCounts[room.id] ?? 0) > 99 ? '99+' : unreadCounts[room.id]}
-                  </span>
-                ) : (
-                  <ChevronRight size={18} className="text-[var(--text-muted)] shrink-0" />
-                )}
+                <ChevronRight size={18} className="text-[var(--text-muted)] shrink-0" />
               </button>
             ))}
           </div>

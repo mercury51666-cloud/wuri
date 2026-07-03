@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      selfDestroying: true,
+      selfDestroying: false,
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
         name: 'WURI — 우리만의 공간',

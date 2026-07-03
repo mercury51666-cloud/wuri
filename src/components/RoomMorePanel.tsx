@@ -1,5 +1,5 @@
 import {
-  Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight,
+  Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight, Bell,
 } from 'lucide-react'
 import RoomAvatar from './RoomAvatar'
 import RankBadge from './RankBadge'
@@ -29,6 +29,8 @@ interface Props {
   onChangePhoto: () => void
   onToggleDark: () => void
   onLeave: () => void
+  onEnableNotifications: () => void
+  notificationsEnabled: boolean
   onViewProfile: (name: string, photoURL?: string, userId?: string) => void
 }
 
@@ -41,7 +43,7 @@ const FEATURES: { id: MoreSubTab; label: string; desc: string; Icon: typeof Smil
 
 export default function RoomMorePanel({
   room, dark, isJoined, changingPhoto, memberRanks, memberProfiles, viewerPoints,
-  onSelectTab, onInvite, onRename, onChangePhoto, onToggleDark, onLeave, onViewProfile,
+  onSelectTab, onInvite, onRename, onChangePhoto, onToggleDark, onLeave, onEnableNotifications, notificationsEnabled, onViewProfile,
 }: Props) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-6">
@@ -120,6 +122,14 @@ export default function RoomMorePanel({
             </>
           )}
           <MenuRow icon={Link2} label="친구 초대" onClick={onInvite} />
+          {typeof Notification !== 'undefined' && (
+            <MenuRow
+              icon={Bell}
+              label={notificationsEnabled ? '알림 켜짐' : '새 메시지 알림 켜기'}
+              onClick={onEnableNotifications}
+              disabled={notificationsEnabled}
+            />
+          )}
           <MenuRow icon={dark ? Sun : Moon} label={dark ? '라이트 모드' : '다크 모드'} onClick={onToggleDark} />
           {isJoined && (
             <MenuRow icon={LogOut} label="방 나가기" onClick={onLeave} danger />

@@ -8,7 +8,7 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useToast } from '../contexts/ToastContext'
-import { useMessageNotifications } from '../hooks/useNotifications'
+import { useMessageNotifications, requestNotificationPermission } from '../hooks/useNotifications'
 import { countUnreadByOthers } from '../hooks/useReadStatus'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
@@ -103,6 +103,10 @@ export default function RoomPage() {
   const [renaming, setRenaming] = useState(false)
   const [changingPhoto, setChangingPhoto] = useState(false)
   const [showLeave, setShowLeave] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => typeof Notification !== 'undefined' && Notification.permission === 'granted',
+  )
   const [featureModal, setFeatureModal] = useState<'poll' | 'schedule' | 'birthday' | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
@@ -248,9 +252,19 @@ export default function RoomPage() {
 
   const deleteMessage = async (msg: Message) => {
     if (!user || !roomId || msg.authorId !== user.uid) return
-    if (!confirm('메시지를 삭제할까요?')) return
-    await deleteDoc(doc(db, 'rooms', roomId, 'messages', msg.id))
-    setReactionTarget(null)
+    setDeleteTarget(msg)
+  }
+
+  const confirmDeleteMessage = async () => {
+    if (!deleteTarget || !roomId) return
+    try {
+      await deleteDoc(doc(db, 'rooms', roomId, 'messages', deleteTarget.id))
+      setReactionTarget(null)
+    } catch {
+      toast('메시지 삭제에 실패했어요')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
   const searchResults = useMemo(() => {
@@ -319,13 +333,32 @@ export default function RoomPage() {
     const msg = messages.find((m) => m.id === msgId)
     const current = msg?.reactions?.[emoji] ?? []
     const hasReacted = current.includes(user.uid)
-    await updateDoc(msgRef, {
-      [`reactions.${emoji}`]: hasReacted ? arrayRemove(user.uid) : arrayUnion(user.uid),
-    })
-    setReactionTarget(null)
+    try {
+      await updateDoc(msgRef, {
+        [`reactions.${emoji}`]: hasReacted ? arrayRemove(user.uid) : arrayUnion(user.uid),
+      })
+      setReactionTarget(null)
+    } catch {
+      toast('반응을 남기지 못했어요')
+    }
   }
 
-  useMessageNotifications(messages, user?.uid, room?.name ?? '우리방')
+  useMessageNotifications(messages, user?.uid, room?.name ?? '우리방', notificationsEnabled)
+
+  const enableNotifications = async () => {
+    const result = await requestNotificationPermission()
+    if (result === 'unsupported') {
+      toast('이 브라우저는 알림을 지원하지 않아요')
+      return
+    }
+    if (result === 'granted') {
+      setNotificationsEnabled(true)
+      localStorage.setItem('wuri_notifications', '1')
+      toast('알림 켰어요! 다른 앱을 볼 때 새 메시지를 알려줘요')
+      return
+    }
+    toast('설정에서 알림을 허용해주세요')
+  }
 
   useEffect(() => {
     if (!roomId) return
@@ -498,6 +531,8 @@ export default function RoomPage() {
       setText('')
       setReplyTarget(null)
       clearTyping()
+    } catch {
+      toast('메시지 전송에 실패했어요. 잠시 후 다시 시도해주세요')
     } finally {
       setSending(false)
     }
@@ -527,6 +562,8 @@ export default function RoomPage() {
       await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
       awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
       setReplyTarget(null)
+    } catch {
+      toast('사진 전송에 실패했어요. 용량이나 네트워크를 확인해주세요')
     } finally {
       setSending(false)
     }
@@ -648,11 +685,17 @@ export default function RoomPage() {
   }
 
   if (roomError && !room) return (
-    <div className="h-full bg-gray-50 dark:bg-[#0d0d0d] flex flex-col max-w-md mx-auto items-center justify-center px-6 text-center">
-      <div className="text-4xl mb-4">🚪</div>
-      <p className="font-bold text-gray-800 dark:text-white mb-2">{roomError}</p>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">링크가 올바른지 확인하거나<br />방장에게 다시 초대를 요청해주세요.</p>
-      <button onClick={() => navigate('/')} className="px-6 py-3 rounded-xl bg-violet-500 text-white font-bold">홈으로</button>
+    <div className="page-enter app-shell min-h-screen flex flex-col max-w-md mx-auto items-center justify-center px-6 text-center safe-top">
+      <div className="card p-8 w-full">
+        <div className="text-4xl mb-4">🚪</div>
+        <p className="font-bold text-[var(--text)] mb-2">{roomError}</p>
+        <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+          링크가 올바른지 확인하거나<br />방장에게 다시 초대를 요청해주세요.
+        </p>
+        <button type="button" onClick={() => navigate('/')} className="btn btn-primary w-full">
+          홈으로
+        </button>
+      </div>
     </div>
   )
 
@@ -1089,6 +1132,8 @@ export default function RoomPage() {
             onChangePhoto={() => roomPhotoInputRef.current?.click()}
             onToggleDark={toggleDark}
             onLeave={() => setShowLeave(true)}
+            onEnableNotifications={enableNotifications}
+            notificationsEnabled={notificationsEnabled}
             onViewProfile={(name, photoURL, userId) => openProfile(name, photoURL, userId)}
           />
         )}
@@ -1185,6 +1230,20 @@ export default function RoomPage() {
                 <button type="submit" disabled={renaming || !renameValue.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 disabled:opacity-40 text-white font-bold transition-colors">{renaming ? '저장 중...' : '저장'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-overlay">
+          <div className="modal-sheet sheet-enter max-w-sm text-center">
+            <div className="text-4xl mb-3">🗑️</div>
+            <h3 className="text-lg font-bold text-[var(--text)] mb-2">메시지를 삭제할까요?</h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-6">삭제하면 되돌릴 수 없어요.</p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setDeleteTarget(null)} className="btn btn-secondary flex-1">취소</button>
+              <button type="button" onClick={confirmDeleteMessage} className="btn flex-1 bg-[var(--danger)] text-white font-bold">삭제</button>
+            </div>
           </div>
         </div>
       )}

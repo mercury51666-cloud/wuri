@@ -33,6 +33,8 @@ export default function RoomBottomNav({ activeTab, onChange }: Props) {
             type="button"
             onClick={() => onChange(id)}
             className={`tab-item ${active ? 'active' : ''}`}
+            aria-label={label}
+            aria-current={active ? 'page' : undefined}
           >
             <Icon size={22} strokeWidth={active ? 2.4 : 2} />
             <span>{label}</span>
