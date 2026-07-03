@@ -119,32 +119,30 @@ export default function RoomBgmPlayer({ roomId }: Props) {
   return (
     <div className="room-bgm-player">
       <div className="room-bgm-player-bar">
-        <div className="room-bgm-player-row room-bgm-player-row-main">
-          <div className="room-bgm-player-art">
-            {display.thumbnail ? (
-              <img src={display.thumbnail} alt="" />
-            ) : (
-              <span>🎵</span>
-            )}
-            {playing && isYoutube && (
-              <span className="room-bgm-player-eq" aria-hidden>
-                <span /><span /><span />
-              </span>
-            )}
-          </div>
+        <div className="room-bgm-player-art">
+          {display.thumbnail ? (
+            <img src={display.thumbnail} alt="" />
+          ) : (
+            <span>🎵</span>
+          )}
+          {playing && isYoutube && (
+            <span className="room-bgm-player-eq" aria-hidden>
+              <span /><span /><span />
+            </span>
+          )}
+        </div>
 
-          <div className="room-bgm-player-meta">
+        <div className="room-bgm-player-meta">
+          <div className="room-bgm-player-headline">
             <span className="room-bgm-player-badge">
               ON AIR{queueLabel ? ` · ${queueLabel}` : ''}
             </span>
             <p className="room-bgm-player-title">{display.title}</p>
-            {display.artist && <p className="room-bgm-player-artist">{display.artist}</p>}
           </div>
         </div>
 
         {isYoutube ? (
-          <div className="room-bgm-player-row room-bgm-player-row-controls">
-            <div className="room-bgm-player-controls">
+          <div className="room-bgm-player-controls">
             <button
               type="button"
               className="room-bgm-player-ctrl"
@@ -191,19 +189,16 @@ export default function RoomBgmPlayer({ roomId }: Props) {
             >
               {muted ? '🔇' : '🔊'}
             </button>
-            </div>
           </div>
         ) : (
-          <div className="room-bgm-player-row room-bgm-player-row-controls">
-            <a
-              href={bgm.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="room-bgm-player-unmute"
-            >
-              ▶ 듣기
-            </a>
-          </div>
+          <a
+            href={bgm.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="room-bgm-player-unmute"
+          >
+            ▶
+          </a>
         )}
       </div>
 

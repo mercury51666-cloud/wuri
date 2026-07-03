@@ -33,7 +33,6 @@ import {
   type RoomMute,
 } from '../utils/rankPowers'
 import RankBadge from '../components/RankBadge'
-import ChatMemberRanks from '../components/ChatMemberRanks'
 import ChatBanners from '../components/ChatBanners'
 import PollMessage from '../components/PollMessage'
 import { FeatureModals, ChatFeatureBar } from '../components/FeatureModals'
@@ -894,15 +893,6 @@ export default function RoomPage() {
           <>
             {room && (
               <ChatBanners meta={extras.meta} />
-            )}
-            {room && (
-              <ChatMemberRanks
-                memberIds={room.memberIds}
-                memberProfiles={memberProfiles}
-                memberRanks={memberRanks}
-                viewerPoints={myPoints}
-                onMemberClick={openProfile}
-              />
             )}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" onClick={() => setReactionTarget(null)}>
               {messages.length === 0 && (
