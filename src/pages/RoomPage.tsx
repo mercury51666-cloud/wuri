@@ -15,6 +15,7 @@ import RoomStats from '../components/RoomStats'
 import RankBoard from '../components/RankBoard'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
+import MusicBoard from '../components/MusicBoard'
 import ScheduleCalendar from '../components/ScheduleCalendar'
 import PhotoGallery from '../components/PhotoGallery'
 import RoomAvatar from '../components/RoomAvatar'
@@ -1116,6 +1117,7 @@ export default function RoomPage() {
         )}
 
         {activeTab === 'mood' && roomId && <div className="flex-1 overflow-y-auto p-4"><MoodBoard roomId={roomId} /></div>}
+        {activeTab === 'music' && roomId && <div className="flex-1 overflow-y-auto p-4"><MusicBoard roomId={roomId} /></div>}
         {activeTab === 'schedule' && roomId && <div className="flex-1 overflow-y-auto p-4"><ScheduleCalendar roomId={roomId} /></div>}
         {activeTab === 'more' && (
           <RoomMorePanel

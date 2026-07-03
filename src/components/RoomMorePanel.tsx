@@ -1,5 +1,5 @@
 import {
-  Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight, Bell,
+  Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight, Bell, Headphones,
 } from 'lucide-react'
 import RoomAvatar from './RoomAvatar'
 import RankBadge from './RankBadge'
@@ -38,6 +38,7 @@ const FEATURES: { id: MoreSubTab; label: string; desc: string; Icon: typeof Smil
   { id: 'mood', label: '기분', desc: '오늘 mood 남기기', Icon: Smile, color: 'bg-pink-500/10 text-pink-500' },
   { id: 'mission', label: '미션', desc: '사진 미션 도전', Icon: Target, color: 'bg-amber-500/10 text-amber-500' },
   { id: 'location', label: '친구 지도', desc: '젠리처럼 위치 보기', Icon: MapPin, color: 'bg-blue-500/10 text-blue-500' },
+  { id: 'music', label: '음악', desc: '지금 듣는 중 · 방 BGM', Icon: Headphones, color: 'bg-violet-500/10 text-violet-500' },
   { id: 'stats', label: '계급', desc: '활동 & 순위', Icon: Medal, color: 'bg-emerald-500/10 text-emerald-500' },
 ]
 
