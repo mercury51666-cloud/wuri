@@ -40,8 +40,7 @@ import { useRoomExtras } from '../hooks/useRoomExtras'
 import { parseMentionIds, renderTextWithMentions } from '../utils/mentions'
 import RoomBottomNav, { TAB_TITLES, MORE_SUB_TABS, type RoomTab, type PrimaryTab, type MoreSubTab } from '../components/RoomBottomNav'
 import RoomMorePanel from '../components/RoomMorePanel'
-import RoomMemberSheet from '../components/RoomMemberSheet'
-import { ChevronLeft, Search, Users } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 interface Reaction {
   [emoji: string]: string[] // emoji -> uid[]
 }
@@ -121,7 +120,6 @@ export default function RoomPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [viewingProfile, setViewingProfile] = useState<{ name: string; photoURL?: string; userId?: string } | null>(null)
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
-  const [showMemberSheet, setShowMemberSheet] = useState(false)
   const [memberReadAt, setMemberReadAt] = useState<Record<string, number>>({})
   const [typingRaw, setTypingRaw] = useState<Record<string, { userName: string; updatedAt: number }>>({})
   const [, setTypingTick] = useState(0)
@@ -847,11 +845,6 @@ export default function RoomPage() {
                 <RankBadge rank={memberRanks[user!.uid]} />
               )}
             </div>
-            {isJoined && (
-              <button type="button" onClick={() => setShowMemberSheet(true)} className="icon-btn shrink-0" aria-label="멤버 보기">
-                <Users size={20} />
-              </button>
-            )}
             {activeTab === 'chat' && (
               <button type="button" onClick={() => setShowSearch(true)} className="icon-btn shrink-0">
                 <Search size={20} />
@@ -1190,15 +1183,9 @@ export default function RoomPage() {
                   {myMute?.byUserName} {myMute?.byRankName}님의 명령 — 벙어리 {muteRemainingSec}초 🤐
                 </div>
               )}
-              <form onSubmit={sendMessage} className="room-chat-form flex items-center gap-1.5 px-3 py-2">
-                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`} title="카메라">
-                  <span className="text-base">📷</span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" disabled={sending || isMuted}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
-                  />
-                </label>
-                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`} title="갤러리">
-                  <span className="text-base">🖼️</span>
+              <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2">
+                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
+                  <span className="text-lg">🖼️</span>
                   <input type="file" accept="image/*" className="hidden" disabled={sending || isMuted}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
                   />
@@ -1216,17 +1203,6 @@ export default function RoomPage() {
           )}
           <RoomBottomNav activeTab={activeTab} onChange={handlePrimaryTab} />
         </div>
-      )}
-
-      {showMemberSheet && room && (
-        <RoomMemberSheet
-          memberIds={room.memberIds}
-          memberProfiles={memberProfiles}
-          memberRanks={memberRanks}
-          viewerPoints={myPoints}
-          onClose={() => setShowMemberSheet(false)}
-          onViewProfile={openProfile}
-        />
       )}
 
       {showRename && (

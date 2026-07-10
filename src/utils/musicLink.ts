@@ -107,13 +107,9 @@ export async function resolveMusicLink(input: string): Promise<MusicMeta> {
   return { url, platform, title: host }
 }
 
-export function extractYouTubeVideoId(url: string) {
-  return extractYouTubeId(url)
-}
-
 export function getYouTubeEmbedUrl(
   url: string,
-  opts?: { autoplay?: boolean; mute?: boolean; loop?: boolean; controls?: boolean; enableJsApi?: boolean },
+  opts?: { autoplay?: boolean; mute?: boolean; loop?: boolean; controls?: boolean },
 ) {
   const id = extractYouTubeId(url)
   if (!id) return null
@@ -128,37 +124,7 @@ export function getYouTubeEmbedUrl(
     playsinline: '1',
     iv_load_policy: '3',
   })
-  if (opts?.enableJsApi !== false) {
-    params.set('enablejsapi', '1')
-    if (typeof window !== 'undefined') {
-      params.set('origin', window.location.origin)
-    }
-  }
   return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`
-}
-
-const YT_ORIGINS = ['https://www.youtube.com', 'https://www.youtube-nocookie.com']
-
-export function isYouTubePlayerMessage(origin: string) {
-  return YT_ORIGINS.includes(origin)
-}
-
-/** YouTube iframe postMessage: playerState 0 = ended */
-export function parseYouTubeEnded(data: string): boolean {
-  try {
-    const parsed = JSON.parse(data) as {
-      event?: string
-      info?: number | { playerState?: number }
-    }
-    if (parsed.event === 'onStateChange' && parsed.info === 0) return true
-    if (parsed.event === 'infoDelivery') {
-      if (typeof parsed.info === 'number' && parsed.info === 0) return true
-      if (typeof parsed.info === 'object' && parsed.info?.playerState === 0) return true
-    }
-    return false
-  } catch {
-    return false
-  }
 }
 
 export function getSpotifyEmbedUrl(url: string) {
