@@ -56,10 +56,6 @@ export function resolvePlaylist(
   return { tracks: [], currentIndex: 0, hasPlaylist: false }
 }
 
-export function playableYoutubeTracks(tracks: PlaylistTrack[]) {
-  return tracks.filter((t) => t.platform === 'youtube')
-}
-
 export function clampIndex(index: number, length: number) {
   if (length <= 0) return 0
   return ((index % length) + length) % length
