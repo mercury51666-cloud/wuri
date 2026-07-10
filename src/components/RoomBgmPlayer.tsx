@@ -1,135 +1,95 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { useEffect, useMemo, useState } from 'react'
+import { collection, doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useToast } from '../contexts/ToastContext'
-import {
-  clampIndex,
-  resolvePlaylist,
-  type BgmPlaylistDoc,
-  type LegacyRoomBgm,
-} from '../utils/bgmPlaylist'
-import { getYouTubeEmbedUrl, isYouTubePlayerMessage, parseYouTubeEnded } from '../utils/musicLink'
+import { getYouTubeEmbedUrl, type MusicPlatform } from '../utils/musicLink'
 
-const BGM_HINT_KEY = 'wuri-bgm-unmute-hint'
+interface Track {
+  url: string
+  title: string
+  artist?: string
+  thumbnail?: string
+  platform: MusicPlatform
+}
+
+interface RoomBgm extends Track {
+  setByUserName: string
+}
+
+interface NowPlayingEntry extends Track {
+  userId: string
+  userName: string
+}
 
 interface Props {
   roomId: string
 }
 
+function buildQueue(bgm: RoomBgm | null, nowPlaying: NowPlayingEntry[]): Track[] {
+  const items: Track[] = []
+  const seen = new Set<string>()
+
+  const add = (track: Track) => {
+    if (track.platform !== 'youtube' || seen.has(track.url)) return
+    seen.add(track.url)
+    items.push(track)
+  }
+
+  if (bgm) add(bgm)
+  nowPlaying.forEach(add)
+  return items
+}
+
 export default function RoomBgmPlayer({ roomId }: Props) {
-  const { toast } = useToast()
-  const [legacyBgm, setLegacyBgm] = useState<LegacyRoomBgm | null>(null)
-  const [playlistDoc, setPlaylistDoc] = useState<BgmPlaylistDoc | null>(null)
+  const [bgm, setBgm] = useState<RoomBgm | null>(null)
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingEntry[]>([])
   const [trackIndex, setTrackIndex] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [muted, setMuted] = useState(true)
   const [playerEpoch, setPlayerEpoch] = useState(0)
-  const hintShown = useRef(false)
-  const indexWriteRef = useRef(0)
-
-  const { tracks, currentIndex, hasPlaylist } = useMemo(
-    () => resolvePlaylist(legacyBgm, playlistDoc),
-    [legacyBgm, playlistDoc],
-  )
 
   useEffect(() => {
-    const unsubLegacy = onSnapshot(doc(db, 'rooms', roomId, 'meta', 'bgm'), (snap) => {
-      setLegacyBgm(snap.exists() ? (snap.data() as LegacyRoomBgm) : null)
+    const unsubBgm = onSnapshot(doc(db, 'rooms', roomId, 'meta', 'bgm'), (snap) => {
+      setBgm(snap.exists() ? (snap.data() as RoomBgm) : null)
     })
-    const unsubPlaylist = onSnapshot(doc(db, 'rooms', roomId, 'meta', 'bgmPlaylist'), (snap) => {
-      setPlaylistDoc(snap.exists() ? (snap.data() as BgmPlaylistDoc) : null)
+    const unsubNow = onSnapshot(collection(db, 'rooms', roomId, 'nowPlaying'), (snap) => {
+      setNowPlaying(snap.docs.map((d) => d.data() as NowPlayingEntry))
     })
     return () => {
-      unsubLegacy()
-      unsubPlaylist()
+      unsubBgm()
+      unsubNow()
     }
   }, [roomId])
 
-  useEffect(() => {
-    if (Date.now() - indexWriteRef.current < 400) return
-    setTrackIndex(currentIndex)
-  }, [currentIndex])
+  const queue = useMemo(() => buildQueue(bgm, nowPlaying), [bgm, nowPlaying])
 
   useEffect(() => {
-    if (trackIndex >= tracks.length && tracks.length > 0) {
-      setTrackIndex(0)
-    }
-  }, [tracks.length, trackIndex])
-
-  const bumpPlayer = () => setPlayerEpoch((e) => e + 1)
-
-  const persistIndex = useCallback(async (nextIndex: number) => {
-    if (!hasPlaylist) {
-      setTrackIndex(nextIndex)
-      return
-    }
-    indexWriteRef.current = Date.now()
-    setTrackIndex(nextIndex)
-    try {
-      await setDoc(
-        doc(db, 'rooms', roomId, 'meta', 'bgmPlaylist'),
-        { currentIndex: nextIndex, updatedAt: Date.now() },
-        { merge: true },
-      )
-    } catch {
-      /* local playback continues */
-    }
-  }, [hasPlaylist, roomId])
-
-  const goNext = useCallback(async (auto = false) => {
-    if (tracks.length === 0) return
-    if (tracks.length === 1) {
-      if (auto) bumpPlayer()
-      return
-    }
-    const next = clampIndex(trackIndex + 1, tracks.length)
+    setTrackIndex(0)
     setPlaying(true)
-    bumpPlayer()
-    await persistIndex(next)
-  }, [tracks.length, trackIndex, persistIndex])
+    setPlayerEpoch((e) => e + 1)
+  }, [bgm?.url])
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (!isYouTubePlayerMessage(event.origin)) return
-      if (typeof event.data !== 'string') return
-      if (parseYouTubeEnded(event.data)) {
-        goNext(true)
-      }
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [goNext])
+    if (trackIndex >= queue.length) setTrackIndex(0)
+  }, [queue.length, trackIndex])
 
-  useEffect(() => {
-    if (tracks.length === 0 || hintShown.current) return
-    if (!muted) return
-    try {
-      if (localStorage.getItem(BGM_HINT_KEY)) return
-      localStorage.setItem(BGM_HINT_KEY, '1')
-      hintShown.current = true
-      toast('🔇 눌러 소리를 켜주세요!')
-    } catch {
-      toast('🔇 눌러 소리를 켜주세요!')
-    }
-  }, [tracks.length, muted, toast])
+  if (!bgm) return null
 
-  if (tracks.length === 0) return null
-
-  const current = tracks[trackIndex] ?? tracks[0]
-  const isYoutube = current.platform === 'youtube'
-  const canNext = tracks.length > 1
-  const queueLabel = tracks.length > 1 ? `${trackIndex + 1}/${tracks.length}` : null
+  const current = queue[trackIndex] ?? queue[0]
+  const isYoutube = current?.platform === 'youtube'
+  const canNext = queue.length > 1
+  const queueLabel = queue.length > 1 ? `${trackIndex + 1}/${queue.length}` : null
 
   const youtubeEmbed =
-    isYoutube && playing
+    isYoutube && playing && current
       ? getYouTubeEmbedUrl(current.url, {
           autoplay: true,
           mute: muted,
-          loop: tracks.length === 1,
+          loop: queue.length === 1,
           controls: false,
-          enableJsApi: true,
         })
       : null
+
+  const bumpPlayer = () => setPlayerEpoch((e) => e + 1)
 
   const restart = () => {
     setPlaying(true)
@@ -149,15 +109,19 @@ export default function RoomBgmPlayer({ roomId }: Props) {
 
   const nextTrack = () => {
     if (!canNext) return
-    goNext(false)
+    setTrackIndex((i) => (i + 1) % queue.length)
+    setPlaying(true)
+    bumpPlayer()
   }
+
+  const display = current ?? bgm
 
   return (
     <div className="room-bgm-player">
       <div className="room-bgm-player-bar">
         <div className="room-bgm-player-art">
-          {current.thumbnail ? (
-            <img src={current.thumbnail} alt="" />
+          {display.thumbnail ? (
+            <img src={display.thumbnail} alt="" />
           ) : (
             <span>🎵</span>
           )}
@@ -173,13 +137,21 @@ export default function RoomBgmPlayer({ roomId }: Props) {
             <span className="room-bgm-player-badge">
               ON AIR{queueLabel ? ` · ${queueLabel}` : ''}
             </span>
-            <p className="room-bgm-player-title">{current.title}</p>
+            <p className="room-bgm-player-title">{display.title}</p>
           </div>
         </div>
 
         {isYoutube ? (
           <div className="room-bgm-player-controls">
-            <button type="button" className="room-bgm-player-ctrl" onClick={restart} aria-label="처음부터" title="처음부터">⏮</button>
+            <button
+              type="button"
+              className="room-bgm-player-ctrl"
+              onClick={restart}
+              aria-label="처음부터"
+              title="처음부터"
+            >
+              ⏮
+            </button>
             <button
               type="button"
               className="room-bgm-player-ctrl room-bgm-player-ctrl-play"
@@ -189,7 +161,15 @@ export default function RoomBgmPlayer({ roomId }: Props) {
             >
               {playing ? '⏸' : '▶'}
             </button>
-            <button type="button" className="room-bgm-player-ctrl" onClick={stop} aria-label="정지" title="정지">⏹</button>
+            <button
+              type="button"
+              className="room-bgm-player-ctrl"
+              onClick={stop}
+              aria-label="정지"
+              title="정지"
+            >
+              ⏹
+            </button>
             <button
               type="button"
               className="room-bgm-player-ctrl"
@@ -212,7 +192,7 @@ export default function RoomBgmPlayer({ roomId }: Props) {
           </div>
         ) : (
           <a
-            href={current.url}
+            href={bgm.url}
             target="_blank"
             rel="noopener noreferrer"
             className="room-bgm-player-unmute"
@@ -227,14 +207,10 @@ export default function RoomBgmPlayer({ roomId }: Props) {
           <iframe
             key={`${playerEpoch}-${trackIndex}-${muted ? 'm' : 'u'}`}
             src={youtubeEmbed}
-            title={`방 BGM: ${current.title}`}
+            title={`방 BGM: ${display.title}`}
             allow="autoplay; encrypted-media"
             referrerPolicy="strict-origin-when-cross-origin"
             tabIndex={-1}
-            onLoad={(e) => {
-              const win = (e.target as HTMLIFrameElement).contentWindow
-              win?.postMessage(JSON.stringify({ event: 'listening' }), '*')
-            }}
           />
         </div>
       )}
