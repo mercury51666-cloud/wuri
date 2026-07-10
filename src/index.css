@@ -1290,6 +1290,116 @@ html, body {
   color: var(--text-muted);
 }
 
+.music-clear-all {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.music-clear-all:active { opacity: 0.7; }
+
+.music-playlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.music-playlist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(167, 139, 250, 0.12);
+}
+.dark .music-playlist-row {
+  background: rgba(255, 255, 255, 0.05);
+}
+.music-playlist-order {
+  width: 18px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+.music-playlist-main {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+}
+.music-playlist-art {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--brand-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.music-playlist-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.music-playlist-info {
+  flex: 1;
+  min-width: 0;
+}
+.music-playlist-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-playlist-artist {
+  font-size: 10px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-playlist-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.music-playlist-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.music-playlist-sort,
+.music-playlist-remove {
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+.music-playlist-sort:disabled {
+  opacity: 0.3;
+}
+.music-playlist-remove {
+  color: var(--danger, #ef4444);
+}
+
+.room-chat-form {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
 /* ── Room BGM player (in-room autoplay) ── */
 .room-bgm-player {
   position: relative;
@@ -1380,6 +1490,13 @@ html, body {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  overflow-x: auto;
+  max-width: 42vw;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.room-bgm-player-controls::-webkit-scrollbar {
+  display: none;
 }
 .room-bgm-player-ctrl {
   width: 24px;
