@@ -4,6 +4,7 @@ import type { User } from 'firebase/auth'
 import { useAuthState } from './hooks/useAuthState'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { consumeInvitePath, isAuthRedirectPending, saveInvitePath } from './utils/inviteStorage'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import RoomPage from './pages/RoomPage'
@@ -12,34 +13,48 @@ function RequireAuth({ user, children }: { user: User | null; children: ReactNod
   const location = useLocation()
   if (!user) {
     if (location.pathname.startsWith('/room/')) {
-      sessionStorage.setItem('wuri_invite', location.pathname)
+      saveInvitePath(location.pathname)
     }
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
   return <>{children}</>
 }
 
-// 로그인 후 원래 가려던 경로로 이동
-function LoginRoute({ user }: { user: User | null }) {
+function LoginRoute({
+  user,
+  authError,
+  onClearAuthError,
+}: {
+  user: User | null
+  authError: string | null
+  onClearAuthError: () => void
+}) {
   const location = useLocation()
   if (user) {
-    const stored = sessionStorage.getItem('wuri_invite')
-    const from = (location.state as { from?: string })?.from ?? stored ?? '/'
-    if (stored) sessionStorage.removeItem('wuri_invite')
+    const fromState = (location.state as { from?: string })?.from
+    const from = consumeInvitePath(fromState ?? '/')
     return <Navigate to={from} replace />
   }
-  return <LoginPage />
+  return (
+    <LoginPage
+      authError={authError}
+      onClearAuthError={onClearAuthError}
+      completingRedirect={isAuthRedirectPending()}
+    />
+  )
 }
 
 function App() {
-  const { user, loading } = useAuthState()
+  const { user, loading, authError, clearAuthError } = useAuthState()
 
   if (loading) {
     return (
       <div className="app-shell flex flex-1 min-h-dvh items-center justify-center">
         <div className="text-center">
           <div className="w-11 h-11 border-[3px] border-[var(--brand)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-[var(--text-secondary)] font-medium text-sm">잠깐만요...</p>
+          <p className="text-[var(--text-secondary)] font-medium text-sm">
+            {isAuthRedirectPending() ? '로그인 마무리 중...' : '잠깐만요...'}
+          </p>
         </div>
       </div>
     )
@@ -53,7 +68,13 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={<LoginRoute user={user} />}
+          element={
+            <LoginRoute
+              user={user}
+              authError={authError}
+              onClearAuthError={clearAuthError}
+            />
+          }
         />
         <Route
           path="/"

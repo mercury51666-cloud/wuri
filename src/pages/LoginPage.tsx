@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth'
 import { auth } from '../firebase'
+import { markAuthRedirectPending } from '../utils/inviteStorage'
 import { Link2 } from 'lucide-react'
 
 function isInAppBrowser() {
@@ -8,35 +9,44 @@ function isInAppBrowser() {
   return /FBAN|FBAV|Instagram|Messenger|Line|KAKAOTALK|Snapchat|TikTok|WhatsApp|Twitter|NaverApp|DaumApp/i.test(ua)
 }
 
-function isMobileSafari() {
-  return /iPhone|iPad|iPod/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent)
+function shouldUseRedirect() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 }
 
-export default function LoginPage() {
+interface Props {
+  authError?: string | null
+  onClearAuthError?: () => void
+  completingRedirect?: boolean
+}
+
+export default function LoginPage({ authError, onClearAuthError, completingRedirect }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const inApp = isInAppBrowser()
 
   useEffect(() => {
-    getRedirectResult(auth).catch(() => {})
-  }, [])
+    if (authError) setError(authError)
+  }, [authError])
 
   const handleGoogle = async () => {
+    onClearAuthError?.()
     setError('')
     setLoading(true)
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
     try {
-      if (isMobileSafari()) {
+      if (shouldUseRedirect()) {
+        markAuthRedirectPending()
         await signInWithRedirect(auth, provider)
         return
       }
       await signInWithPopup(auth, provider)
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
-      if (code === 'auth/popup-blocked') {
+      if (code === 'auth/popup-blocked' || shouldUseRedirect()) {
         try {
+          markAuthRedirectPending()
           await signInWithRedirect(auth, provider)
           return
         } catch {
@@ -49,6 +59,8 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+
+  const showLoading = loading || completingRedirect
 
   return (
     <div className="page-enter app-shell safe-top min-h-screen flex flex-col items-center justify-center p-6">
@@ -68,7 +80,7 @@ export default function LoginPage() {
                 <p className="font-bold text-[var(--text)] text-base mb-2">앱 내 브라우저에서는 로그인이 안 돼요</p>
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
                   Google 보안 정책으로 카카오, 인스타 등<br />앱 안에서는 로그인이 차단돼요.<br />
-                  <span className="font-semibold text-[var(--brand)]">Safari 또는 Chrome</span>으로 열어주세요.
+                  <span className="font-semibold text-[var(--brand)]">Safari</span>에서 링크를 열어주세요.
                 </p>
               </div>
               <button
@@ -87,11 +99,15 @@ export default function LoginPage() {
             </div>
           ) : (
             <>
-              <p className="text-center text-sm text-[var(--text-secondary)] mb-6">구글 계정으로 간편하게 시작해요</p>
+              <p className="text-center text-sm text-[var(--text-secondary)] mb-6">
+                {completingRedirect
+                  ? 'Google 로그인 마무리 중이에요...'
+                  : '구글 계정으로 간편하게 시작해요'}
+              </p>
               <button
                 type="button"
                 onClick={handleGoogle}
-                disabled={loading}
+                disabled={showLoading}
                 className="btn btn-secondary w-full py-4 bg-[var(--surface)]"
               >
                 <svg width="20" height="20" viewBox="0 0 48 48">
@@ -100,7 +116,7 @@ export default function LoginPage() {
                   <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
                   <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                 </svg>
-                {loading ? '로그인 중...' : 'Google로 시작하기'}
+                {showLoading ? '로그인 중...' : 'Google로 시작하기'}
               </button>
               {error && <p className="mt-4 text-[var(--danger)] text-sm text-center">{error}</p>}
             </>

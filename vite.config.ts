@@ -11,6 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       selfDestroying: false,
+      workbox: {
+        navigateFallbackDenylist: [/^\/__/, /\?.*apiKey=/],
+      },
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
         name: 'WURI — 우리만의 공간',
