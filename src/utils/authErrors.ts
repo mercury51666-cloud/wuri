@@ -2,20 +2,34 @@ export function formatAuthError(err: unknown): string {
   const code = (err as { code?: string })?.code ?? ''
   switch (code) {
     case 'auth/unauthorized-domain':
-      return `이 사이트(${window.location.hostname})가 Firebase에 등록되지 않았어요. Firebase 콘솔 → Authentication → Settings → Authorized domains에 추가해주세요.`
+      return `이 사이트(${window.location.hostname})가 Firebase에 등록되지 않았어요. Firebase 콘솔 → Authentication → Settings → Authorized domains에 "${window.location.hostname}" 추가 후 저장해주세요.`
     case 'auth/operation-not-allowed':
       return 'Google 로그인이 Firebase에서 꺼져 있어요. Authentication → Sign-in method에서 Google을 켜주세요.'
     case 'auth/invalid-api-key':
     case 'auth/app-not-authorized':
-      return 'Firebase 설정(API Key)이 잘못됐어요. Vercel 환경 변수를 확인해주세요.'
+      return 'Firebase 설정(API Key)이 잘못됐어요. Vercel 환경 변수(VITE_FIREBASE_*)를 확인해주세요.'
     case 'auth/network-request-failed':
       return '네트워크 오류예요. Wi-Fi 연결 후 다시 시도해주세요.'
     case 'auth/web-storage-unsupported':
-      return 'Safari에서 저장소가 차단됐어요. 시크릿 모드를 끄거나 Safari 설정 → 개인정보 보호에서 추적 방지를 확인해주세요.'
+      return 'Safari에서 저장소가 차단됐어요. 시크릿 모드를 끄거나 Safari 설정 → 개인정보 보호 → "다른 추적 방지"를 꺼보세요.'
     default:
       if (code) return `로그인 오류 (${code}). 잠시 후 다시 시도해주세요.`
       return '로그인에 실패했어요. 다시 시도해주세요.'
   }
+}
+
+export function isOAuthReturnUrl() {
+  const href = window.location.href
+  return /[?&#](apiKey|authType|authUser|code|state|error)=/.test(href)
+}
+
+export function oauthReturnFailureMessage() {
+  return [
+    'Google 로그인 후 연결이 끊겼어요.',
+    `Firebase 콘솔 → Authentication → Settings → Authorized domains에`,
+    `"${window.location.hostname}" 이 있는지 확인해주세요.`,
+    '(없으면 Add domain으로 추가 후 저장)',
+  ].join('\n')
 }
 
 export function parseAuthUrlError(): string | null {

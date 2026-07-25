@@ -12,7 +12,15 @@ export default defineConfig({
       injectRegister: 'auto',
       selfDestroying: false,
       workbox: {
-        navigateFallbackDenylist: [/^\/__/, /\?.*apiKey=/],
+        // OAuth 복귀 URL(?apiKey=...)은 SW가 가로채지 않도록
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [
+          /^\/__/,
+          /\/__\/auth/,
+          /[?&](apiKey|authType|authUser|code|state|error|mode|oobCode)=/,
+        ],
+        globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2}'],
+        globIgnores: ['**/index.html'],
       },
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
@@ -24,7 +32,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
-        start_url: '/',
+        start_url: '/login',
         lang: 'ko',
         icons: [
           {

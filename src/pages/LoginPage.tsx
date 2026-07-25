@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth'
-import { auth, isFirebaseConfigured } from '../firebase'
+import { auth, isFirebaseConfigured, getFirebaseDebugLabel } from '../firebase'
 import { markAuthRedirectPending } from '../utils/inviteStorage'
 import { formatAuthError } from '../utils/authErrors'
 import { Link2 } from 'lucide-react'
@@ -130,9 +130,12 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
               )}
               {!isFirebaseConfigured() && (
                 <p className="mt-3 text-amber-600 dark:text-amber-400 text-xs text-center">
-                  ⚠️ Firebase 환경 변수 미설정
+                  ⚠️ Firebase 환경 변수 미설정 — Vercel에 VITE_FIREBASE_* 등록 필요
                 </p>
               )}
+              <p className="mt-4 text-[10px] text-center text-[var(--text-muted)]">
+                {getFirebaseDebugLabel()}
+              </p>
             </>
           )}
         </div>

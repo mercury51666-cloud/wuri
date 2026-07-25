@@ -1,17 +1,44 @@
 import { getRedirectResult } from 'firebase/auth'
 import { auth } from './firebase'
 import { clearAuthRedirectPending } from './utils/inviteStorage'
-import { formatAuthError } from './utils/authErrors'
+import { formatAuthError, isOAuthReturnUrl, oauthReturnFailureMessage } from './utils/authErrors'
 
-/** OAuth 리다이렉트 복귀 시 React 렌더 전에 한 번만 실행 */
 export let authRedirectError: string | null = null
 
-export const authRedirectPromise = getRedirectResult(auth)
-  .catch((err) => {
+async function clearServiceWorkersForOAuthReturn() {
+  if (!isOAuthReturnUrl() || !('serviceWorker' in navigator)) return
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations()
+    await Promise.all(regs.map((reg) => reg.unregister()))
+  } catch {
+    /* ignore */
+  }
+}
+
+async function handleRedirectResult() {
+  await clearServiceWorkersForOAuthReturn()
+  let signedIn = false
+
+  try {
+    const result = await getRedirectResult(auth)
+    signedIn = Boolean(result?.user || auth.currentUser)
+    if (result?.user) return result
+
+    if (isOAuthReturnUrl() && !auth.currentUser) {
+      authRedirectError = oauthReturnFailureMessage()
+    }
+    return result
+  } catch (err) {
     authRedirectError = formatAuthError(err)
     console.error('[WURI auth] getRedirectResult failed', err)
     return null
-  })
-  .finally(() => {
+  } finally {
     clearAuthRedirectPending()
-  })
+    if (isOAuthReturnUrl() && signedIn) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }
+}
+
+/** React 렌더 전에 반드시 await */
+export const authRedirectPromise = handleRedirectResult()

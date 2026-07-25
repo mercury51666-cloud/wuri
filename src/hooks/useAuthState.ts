@@ -3,10 +3,10 @@ import { onAuthStateChanged, type User } from 'firebase/auth'
 import { authRedirectError, authRedirectPromise } from '../authBootstrap'
 import { auth } from '../firebase'
 import { isAuthRedirectPending } from '../utils/inviteStorage'
-import { parseAuthUrlError } from '../utils/authErrors'
+import { isOAuthReturnUrl, oauthReturnFailureMessage, parseAuthUrlError } from '../utils/authErrors'
 
 export function useAuthState() {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(() => auth.currentUser)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState<string | null>(
     () => authRedirectError || parseAuthUrlError(),
@@ -17,12 +17,14 @@ export function useAuthState() {
     let unsub: (() => void) | undefined
 
     const init = async () => {
-      const redirectPending = isAuthRedirectPending()
+      const redirectPending = isAuthRedirectPending() || isOAuthReturnUrl()
 
       try {
-        const result = await authRedirectPromise
-        if (!cancelled && result?.user) {
-          setUser(result.user)
+        await authRedirectPromise
+        if (!cancelled && auth.currentUser) {
+          setUser(auth.currentUser)
+        } else if (!cancelled && isOAuthReturnUrl() && !auth.currentUser && !authRedirectError) {
+          setAuthError(oauthReturnFailureMessage())
         }
       } catch {
         /* handled in authBootstrap */
@@ -37,7 +39,12 @@ export function useAuthState() {
         if (currentUser) setAuthError(null)
       })
 
-      const fallbackMs = redirectPending ? 15000 : 6000
+      if (auth.currentUser) {
+        setUser(auth.currentUser)
+        setLoading(false)
+      }
+
+      const fallbackMs = redirectPending ? 15000 : 4000
       window.setTimeout(() => {
         if (!cancelled) setLoading(false)
       }, fallbackMs)
