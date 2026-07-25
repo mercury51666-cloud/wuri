@@ -1,39 +1,16 @@
 import { useState, useEffect } from 'react'
-import {
-  browserLocalPersistence,
-  getRedirectResult,
-  onAuthStateChanged,
-  setPersistence,
-  type User,
-} from 'firebase/auth'
+import { onAuthStateChanged, type User } from 'firebase/auth'
+import { authRedirectError, authRedirectPromise } from '../authBootstrap'
 import { auth } from '../firebase'
-import { clearAuthRedirectPending, isAuthRedirectPending } from '../utils/inviteStorage'
-
-let redirectBootstrap: Promise<User | null> | null = null
-
-function bootstrapRedirectResult() {
-  if (!redirectBootstrap) {
-    redirectBootstrap = (async () => {
-      try {
-        await setPersistence(auth, browserLocalPersistence)
-      } catch {
-        /* persistence may already be set */
-      }
-      try {
-        const result = await getRedirectResult(auth)
-        return result?.user ?? null
-      } finally {
-        clearAuthRedirectPending()
-      }
-    })()
-  }
-  return redirectBootstrap
-}
+import { isAuthRedirectPending } from '../utils/inviteStorage'
+import { parseAuthUrlError } from '../utils/authErrors'
 
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(
+    () => authRedirectError || parseAuthUrlError(),
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -43,15 +20,12 @@ export function useAuthState() {
       const redirectPending = isAuthRedirectPending()
 
       try {
-        const redirectUser = await bootstrapRedirectResult()
-        if (!cancelled && redirectUser) {
-          setUser(redirectUser)
+        const result = await authRedirectPromise
+        if (!cancelled && result?.user) {
+          setUser(result.user)
         }
-      } catch (err) {
-        console.error('Redirect sign-in failed', err)
-        if (!cancelled) {
-          setAuthError('Google 로그인 처리에 실패했어요. 다시 시도해주세요.')
-        }
+      } catch {
+        /* handled in authBootstrap */
       }
 
       if (cancelled) return
@@ -60,10 +34,10 @@ export function useAuthState() {
         if (cancelled) return
         setUser(currentUser)
         setLoading(false)
+        if (currentUser) setAuthError(null)
       })
 
-      // OAuth 복귀 직후엔 auth 이벤트가 늦을 수 있음 — 너무 빨리 로그인 화면 노출 방지
-      const fallbackMs = redirectPending ? 12000 : 8000
+      const fallbackMs = redirectPending ? 15000 : 6000
       window.setTimeout(() => {
         if (!cancelled) setLoading(false)
       }, fallbackMs)

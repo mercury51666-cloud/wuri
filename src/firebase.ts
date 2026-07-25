@@ -1,5 +1,10 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  indexedDBLocalPersistence,
+  initializeAuth,
+} from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -12,8 +17,20 @@ export const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
+export function isFirebaseConfigured() {
+  return Boolean(
+    firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId &&
+      firebaseConfig.appId,
+  )
+}
+
 const app = initializeApp(firebaseConfig)
 
-export const auth = getAuth(app)
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
+})
 export const db = getFirestore(app)
 export const storage = getStorage(app)

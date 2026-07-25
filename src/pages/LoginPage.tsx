@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth'
-import { auth } from '../firebase'
+import { auth, isFirebaseConfigured } from '../firebase'
 import { markAuthRedirectPending } from '../utils/inviteStorage'
+import { formatAuthError } from '../utils/authErrors'
 import { Link2 } from 'lucide-react'
 
 function isInAppBrowser() {
@@ -30,6 +31,10 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
   }, [authError])
 
   const handleGoogle = async () => {
+    if (!isFirebaseConfigured()) {
+      setError('Firebase 설정이 비어 있어요. 배포 환경 변수(VITE_FIREBASE_*)를 확인해주세요.')
+      return
+    }
     onClearAuthError?.()
     setError('')
     setLoading(true)
@@ -49,11 +54,11 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
           markAuthRedirectPending()
           await signInWithRedirect(auth, provider)
           return
-        } catch {
-          setError('로그인 창을 열 수 없어요. Safari/Chrome에서 다시 시도해주세요.')
+        } catch (redirectErr) {
+          setError(formatAuthError(redirectErr))
         }
       } else if (code !== 'auth/popup-closed-by-user') {
-        setError('로그인에 실패했어요. 다시 시도해주세요.')
+        setError(formatAuthError(err))
       }
     } finally {
       setLoading(false)
@@ -118,7 +123,16 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
                 </svg>
                 {showLoading ? '로그인 중...' : 'Google로 시작하기'}
               </button>
-              {error && <p className="mt-4 text-[var(--danger)] text-sm text-center">{error}</p>}
+              {error && (
+                <p className="mt-4 text-[var(--danger)] text-sm text-center leading-relaxed whitespace-pre-wrap">
+                  {error}
+                </p>
+              )}
+              {!isFirebaseConfigured() && (
+                <p className="mt-3 text-amber-600 dark:text-amber-400 text-xs text-center">
+                  ⚠️ Firebase 환경 변수 미설정
+                </p>
+              )}
             </>
           )}
         </div>
