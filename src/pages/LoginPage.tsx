@@ -10,10 +10,6 @@ function isInAppBrowser() {
   return /FBAN|FBAV|Instagram|Messenger|Line|KAKAOTALK|Snapchat|TikTok|WhatsApp|Twitter|NaverApp|DaumApp/i.test(ua)
 }
 
-function shouldUseRedirect() {
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-}
-
 interface Props {
   authError?: string | null
   onClearAuthError?: () => void
@@ -40,27 +36,35 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
     setLoading(true)
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
+
+    // 팝업 우선: 사파리 리다이렉트는 ITP(추적 방지)에 막혀 로그인 정보가
+    // 조용히 사라지는 경우가 많음. 팝업은 페이지 전체 이동이 없어 이 문제를 피함.
     try {
-      if (shouldUseRedirect()) {
-        markAuthRedirectPending()
-        await signInWithRedirect(auth, provider)
-        return
-      }
       await signInWithPopup(auth, provider)
+      return
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
-      if (code === 'auth/popup-blocked' || shouldUseRedirect()) {
-        try {
-          markAuthRedirectPending()
-          await signInWithRedirect(auth, provider)
-          return
-        } catch (redirectErr) {
-          setError(formatAuthError(redirectErr))
-        }
-      } else if (code !== 'auth/popup-closed-by-user') {
-        setError(formatAuthError(err))
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setLoading(false)
+        return
       }
-    } finally {
+      const needsRedirectFallback =
+        code === 'auth/popup-blocked' ||
+        code === 'auth/operation-not-supported-in-this-environment' ||
+        code === 'auth/web-storage-unsupported'
+
+      if (!needsRedirectFallback) {
+        setError(formatAuthError(err))
+        setLoading(false)
+        return
+      }
+    }
+
+    try {
+      markAuthRedirectPending()
+      await signInWithRedirect(auth, provider)
+    } catch (redirectErr) {
+      setError(formatAuthError(redirectErr))
       setLoading(false)
     }
   }
