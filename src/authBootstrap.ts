@@ -5,11 +5,43 @@ import { formatAuthError, isOAuthReturnUrl, oauthReturnFailureMessage } from './
 
 export let authRedirectError: string | null = null
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        resolve(fallback)
+      }
+    }, ms)
+    promise.then(
+      (value) => {
+        if (!settled) {
+          settled = true
+          clearTimeout(timer)
+          resolve(value)
+        }
+      },
+      () => {
+        if (!settled) {
+          settled = true
+          clearTimeout(timer)
+          resolve(fallback)
+        }
+      },
+    )
+  })
+}
+
 async function clearServiceWorkersForOAuthReturn() {
   if (!isOAuthReturnUrl() || !('serviceWorker' in navigator)) return
   try {
-    const regs = await navigator.serviceWorker.getRegistrations()
-    await Promise.all(regs.map((reg) => reg.unregister()))
+    const regs = await withTimeout(navigator.serviceWorker.getRegistrations(), 1500, [])
+    await withTimeout(
+      Promise.all(regs.map((reg) => reg.unregister().catch(() => false))),
+      1500,
+      [],
+    )
   } catch {
     /* ignore */
   }
@@ -20,7 +52,7 @@ async function handleRedirectResult() {
   let signedIn = false
 
   try {
-    const result = await getRedirectResult(auth)
+    const result = await withTimeout(getRedirectResult(auth), 8000, null)
     signedIn = Boolean(result?.user || auth.currentUser)
     if (result?.user) return result
 
@@ -40,5 +72,5 @@ async function handleRedirectResult() {
   }
 }
 
-/** React 렌더 전에 반드시 await */
+/** 어떤 경우에도 이 프라미스는 멈추지 않고 정해진 시간 안에 끝남 */
 export const authRedirectPromise = handleRedirectResult()

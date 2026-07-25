@@ -32,7 +32,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
-        start_url: '/login',
+        start_url: '/',
         lang: 'ko',
         icons: [
           {
