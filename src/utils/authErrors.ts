@@ -12,6 +12,15 @@ export function formatAuthError(err: unknown): string {
       return '네트워크 오류예요. Wi-Fi 연결 후 다시 시도해주세요.'
     case 'auth/web-storage-unsupported':
       return 'Safari에서 저장소가 차단됐어요. 시크릿 모드를 끄거나 Safari 설정 → 개인정보 보호 → "다른 추적 방지"를 꺼보세요.'
+    case 'auth/missing-initial-state':
+      return [
+        'Safari가 로그인 진행 정보를 저장하지 못했어요 (개인정보 보호 기능 때문).',
+        '',
+        '아래 순서로 다시 시도해주세요:',
+        '1) 설정 앱 → Safari → "다른 사이트 간 추적 방지" 끄기',
+        '2) 시크릿 모드(비공개 브라우징)라면 끄고 일반 탭에서 열기',
+        '3) 홈 화면에 추가된 앱이 아닌, Safari 브라우저에서 직접 열기',
+      ].join('\n')
     default:
       if (code) return `로그인 오류 (${code}). 잠시 후 다시 시도해주세요.`
       return '로그인에 실패했어요. 다시 시도해주세요.'
@@ -38,7 +47,7 @@ export function parseAuthUrlError(): string | null {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     const code = search.get('error') || hash.get('error')
     if (!code) return null
-    return formatAuthError({ code: `auth/${code.replace(/-/g, '-')}` })
+    return formatAuthError({ code: `auth/${code}` })
   } catch {
     return null
   }
