@@ -22,20 +22,23 @@ registerRoute(
 )
 
 // --- Firebase Cloud Messaging ---
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
+// importScripts가 실패해도(네트워크 오류 등) 워크박스 프리캐싱은 절대 깨지면 안 되므로
+// 반드시 try/catch로 감싼다. 여길 감싸지 않으면 SW 전체 설치가 실패해서
+// navigator.serviceWorker.ready가 영원히 대기하는 심각한 문제가 생긴다.
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js')
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js')
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-}
+  const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  }
 
-if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
-  try {
+  if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
     firebase.initializeApp(firebaseConfig)
     const messaging = firebase.messaging()
 
@@ -50,9 +53,9 @@ if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
         data: { url },
       })
     })
-  } catch (err) {
-    console.error('[WURI sw] FCM init failed', err)
   }
+} catch (err) {
+  console.error('[WURI sw] FCM init failed', err)
 }
 
 self.addEventListener('notificationclick', (event) => {

@@ -4,6 +4,16 @@ import { app, db, isFirebaseConfigured } from '../firebase'
 
 let messagingInstance: Messaging | null | undefined
 
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutMessage)), ms)
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v) },
+      (e) => { clearTimeout(timer); reject(e) },
+    )
+  })
+}
+
 async function getMessagingInstance(): Promise<Messaging | null> {
   if (!isFirebaseConfigured()) return null
   if (messagingInstance !== undefined) return messagingInstance
@@ -41,8 +51,16 @@ export async function registerFcmToken(uid: string): Promise<FcmRegisterResult> 
     if (!vapidKey) return { token: null, reason: 'VITE_FIREBASE_VAPID_KEY 환경 변수가 없어요' }
 
     const messaging = getMessaging(app)
-    const registration = await navigator.serviceWorker.ready
-    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration })
+    const registration = await withTimeout(
+      navigator.serviceWorker.ready,
+      8000,
+      '서비스워커가 8초 안에 준비되지 않았어요(설치 실패 가능성)',
+    )
+    const token = await withTimeout(
+      getToken(messaging, { vapidKey, serviceWorkerRegistration: registration }),
+      10000,
+      'getToken이 10초 안에 응답하지 않았어요',
+    )
     if (!token) return { token: null, reason: 'getToken이 빈 값을 반환했어요' }
 
     await setDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) }, { merge: true })
