@@ -19,7 +19,7 @@ export function formatAuthError(err: unknown): string {
         '아래 순서로 다시 시도해주세요:',
         '1) 설정 앱 → Safari → "다른 사이트 간 추적 방지" 끄기',
         '2) 시크릿 모드(비공개 브라우징)라면 끄고 일반 탭에서 열기',
-        '3) 홈 화면에 추가된 앱이 아닌, Safari 브라우저에서 직접 열기',
+        '3) 앱을 완전히 종료한 뒤 다시 Google로 시작하기를 눌러보기',
       ].join('\n')
     default:
       if (code) return `로그인 오류 (${code}). 잠시 후 다시 시도해주세요.`

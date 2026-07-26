@@ -10,13 +10,6 @@ function isInAppBrowser() {
   return /FBAN|FBAV|Instagram|Messenger|Line|KAKAOTALK|Snapchat|TikTok|WhatsApp|Twitter|NaverApp|DaumApp/i.test(ua)
 }
 
-/** 홈 화면에 추가된 iOS 웹앱(standalone)에서는 Google 로그인(팝업/리다이렉트 모두)이
- * 세션 저장소 문제로 자주 깨진다. 이 경우 Safari 브라우저에서 직접 열도록 안내한다. */
-function isStandalonePwa() {
-  const nav = navigator as Navigator & { standalone?: boolean }
-  return nav.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true
-}
-
 interface Props {
   authError?: string | null
   onClearAuthError?: () => void
@@ -28,8 +21,6 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const inApp = isInAppBrowser()
-  const standalone = isStandalonePwa()
-  const blockedEnvironment = inApp || standalone
 
   useEffect(() => {
     if (authError) setError(authError)
@@ -91,25 +82,14 @@ export default function LoginPage({ authError, onClearAuthError, completingRedir
         </div>
 
         <div className="card w-full p-8">
-          {blockedEnvironment ? (
+          {inApp ? (
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-14 h-14 bg-amber-500/10 rounded-[var(--radius-xl)] flex items-center justify-center text-2xl">⚠️</div>
               <div>
-                <p className="font-bold text-[var(--text)] text-base mb-2">
-                  {standalone ? '홈 화면 앱에서는 로그인이 불안정해요' : '앱 내 브라우저에서는 로그인이 안 돼요'}
-                </p>
+                <p className="font-bold text-[var(--text)] text-base mb-2">앱 내 브라우저에서는 로그인이 안 돼요</p>
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                  {standalone ? (
-                    <>
-                      Safari 저장 방식 때문에 홈 화면 앱에서는 구글 로그인이 자주 실패해요.<br />
-                      아래 버튼으로 링크를 복사해서 <span className="font-semibold text-[var(--brand)]">Safari 앱</span>에서 직접 열어주세요.
-                    </>
-                  ) : (
-                    <>
-                      Google 보안 정책으로 카카오, 인스타 등<br />앱 안에서는 로그인이 차단돼요.<br />
-                      <span className="font-semibold text-[var(--brand)]">Safari</span>에서 링크를 열어주세요.
-                    </>
-                  )}
+                  Google 보안 정책으로 카카오, 인스타 등<br />앱 안에서는 로그인이 차단돼요.<br />
+                  <span className="font-semibold text-[var(--brand)]">Safari</span>에서 링크를 열어주세요.
                 </p>
               </div>
               <button
