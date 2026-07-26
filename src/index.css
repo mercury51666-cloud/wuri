@@ -1298,22 +1298,22 @@ html, body {
 .room-bgm-player-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px 5px;
-  min-height: 40px;
+  gap: 6px;
+  padding: 3px 8px 4px;
+  min-height: 36px;
 }
 .room-bgm-player-art {
   position: relative;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
   background: var(--brand-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 11px;
 }
 .room-bgm-player-art img {
   width: 100%;
@@ -1355,9 +1355,9 @@ html, body {
 }
 .room-bgm-player-badge {
   display: inline-block;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 800;
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: linear-gradient(135deg, #a78bfa, #ff6b9d);
   color: white;
@@ -1378,17 +1378,17 @@ html, body {
 .room-bgm-player-controls {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   flex-shrink: 0;
 }
 .room-bgm-player-ctrl {
-  width: 24px;
-  height: 24px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 8px;
   line-height: 1;
   background: var(--surface-2);
   color: var(--text);
@@ -1401,21 +1401,21 @@ html, body {
 .room-bgm-player-ctrl-play {
   background: var(--brand);
   color: white;
-  width: 26px;
-  height: 26px;
-  font-size: 11px;
+  width: 21px;
+  height: 21px;
+  font-size: 9px;
 }
 .room-bgm-player-ctrl-mute {
-  font-size: 11px;
+  font-size: 9px;
 }
 .room-bgm-player-unmute {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 21px;
+  height: 21px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
   color: white;
   background: var(--brand);
