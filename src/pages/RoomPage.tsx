@@ -9,6 +9,7 @@ import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useToast } from '../contexts/ToastContext'
 import { useMessageNotifications, requestNotificationPermission } from '../hooks/useNotifications'
+import { registerFcmToken, requestMessagePush } from '../hooks/useFcm'
 import { countUnreadByOthers } from '../hooks/useReadStatus'
 import DailyMission from '../components/DailyMission'
 import RoomStats from '../components/RoomStats'
@@ -108,6 +109,9 @@ export default function RoomPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () => typeof Notification !== 'undefined' && Notification.permission === 'granted',
   )
+  // 푸시 토큰이 등록되면 백그라운드/종료 상태 알림은 서비스워커가 담당하므로
+  // 로컬(탭 열려있을 때만 동작하는) 알림은 중복을 막기 위해 끈다.
+  const [pushReady, setPushReady] = useState(false)
   const [featureModal, setFeatureModal] = useState<'poll' | 'schedule' | 'birthday' | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
@@ -344,7 +348,7 @@ export default function RoomPage() {
     }
   }
 
-  useMessageNotifications(messages, user?.uid, room?.name ?? '우리방', notificationsEnabled)
+  useMessageNotifications(messages, user?.uid, room?.name ?? '우리방', notificationsEnabled && !pushReady)
 
   const enableNotifications = async () => {
     const result = await requestNotificationPermission()
@@ -355,11 +359,23 @@ export default function RoomPage() {
     if (result === 'granted') {
       setNotificationsEnabled(true)
       localStorage.setItem('wuri_notifications', '1')
-      toast('알림 켰어요! 다른 앱을 볼 때 새 메시지를 알려줘요')
+      const token = user ? await registerFcmToken(user.uid) : null
+      setPushReady(Boolean(token))
+      toast(
+        token
+          ? '알림 켰어요! 앱을 나가거나 종료해도 새 메시지를 알려줘요'
+          : '알림 켰어요! 다른 앱을 볼 때 새 메시지를 알려줘요',
+      )
       return
     }
     toast('설정에서 알림을 허용해주세요')
   }
+
+  // 알림을 이미 허용한 상태로 재방문한 경우 푸시 토큰을 조용히 재등록(만료 대비)
+  useEffect(() => {
+    if (!user || !notificationsEnabled) return
+    registerFcmToken(user.uid).then((token) => setPushReady(Boolean(token))).catch(() => {})
+  }, [user, notificationsEnabled])
 
   useEffect(() => {
     if (!roomId) return
@@ -529,6 +545,13 @@ export default function RoomPage() {
       }
       await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
       awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
+      requestMessagePush({
+        roomId,
+        senderId: user.uid,
+        senderName: user.displayName || '친구',
+        roomName: room?.name,
+        text: msgText,
+      })
       setText('')
       setReplyTarget(null)
       clearTyping()
@@ -562,6 +585,13 @@ export default function RoomPage() {
       }
       await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
       awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
+      requestMessagePush({
+        roomId,
+        senderId: user.uid,
+        senderName: user.displayName || '친구',
+        roomName: room?.name,
+        imageURL,
+      })
       setReplyTarget(null)
     } catch {
       toast('사진 전송에 실패했어요. 용량이나 네트워크를 확인해주세요')

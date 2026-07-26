@@ -11,14 +11,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       selfDestroying: false,
-      workbox: {
-        // OAuth 복귀 URL(?apiKey=...)은 SW가 가로채지 않도록
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [
-          /^\/__/,
-          /\/__\/auth/,
-          /[?&](apiKey|authType|authUser|code|state|error|mode|oobCode)=/,
-        ],
+      // 커스텀 서비스워커(src/sw.ts)를 써서 Firebase Cloud Messaging
+      // 백그라운드 푸시 처리를 워크박스 캐싱과 한 SW 안에서 함께 처리한다.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
         globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2}'],
         globIgnores: ['**/index.html'],
       },

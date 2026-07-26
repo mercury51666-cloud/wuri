@@ -28,7 +28,7 @@ export function isFirebaseConfigured() {
   )
 }
 
-const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig)
+export const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig)
 
 function createAuth(): Auth {
   try {

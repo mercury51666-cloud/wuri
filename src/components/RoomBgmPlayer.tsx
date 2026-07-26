@@ -68,6 +68,19 @@ export default function RoomBgmPlayer({ roomId }: Props) {
     setPlayerEpoch((e) => e + 1)
   }, [bgm?.url])
 
+  // 브라우저 자동재생 정책 때문에 무음으로 시작해야 재생이 되므로,
+  // 방 화면 어디든 한 번 탭하면 자동으로 소리를 켠다.
+  useEffect(() => {
+    if (!bgm || !muted) return
+    const unmuteOnInteract = () => setMuted(false)
+    window.addEventListener('pointerdown', unmuteOnInteract, { once: true })
+    window.addEventListener('keydown', unmuteOnInteract, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unmuteOnInteract)
+      window.removeEventListener('keydown', unmuteOnInteract)
+    }
+  }, [bgm, muted])
+
   useEffect(() => {
     if (trackIndex >= queue.length) setTrackIndex(0)
   }, [queue.length, trackIndex])
