@@ -353,23 +353,28 @@ export default function RoomPage() {
   const enableNotifications = async () => {
     const result = await requestNotificationPermission()
     if (result === 'unsupported') {
-      toast('이 브라우저는 알림을 지원하지 않아요')
+      window.alert('이 브라우저는 알림을 지원하지 않아요')
       return
     }
     if (result === 'granted') {
       setNotificationsEnabled(true)
       localStorage.setItem('wuri_notifications', '1')
-      if (!user) return
+      if (!user) {
+        window.alert('진단 실패: 로그인 정보(user)를 못 찾았어요. 화면을 새로고침한 뒤 다시 시도해주세요.')
+        return
+      }
       const { token, reason } = await registerFcmToken(user.uid)
       setPushReady(Boolean(token))
       if (token) {
-        toast('알림 켰어요! 앱을 나가거나 종료해도 새 메시지를 알려줘요')
+        window.alert(
+          `✅ 푸시 등록 성공\n토큰: ${token.slice(0, 24)}...\n\n앱을 나가거나 종료해도 새 메시지를 알려줘요.`,
+        )
       } else {
-        toast(`알림 켰어요! (푸시 등록 실패: ${reason ?? '알 수 없음'})`)
+        window.alert(`❌ 푸시 등록 실패\n사유: ${reason ?? '알 수 없음'}`)
       }
       return
     }
-    toast('설정에서 알림을 허용해주세요')
+    window.alert('설정에서 알림을 허용해주세요')
   }
 
   // 알림을 이미 허용한 상태로 재방문한 경우 푸시 토큰을 조용히 재등록(만료 대비)
