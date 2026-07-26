@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { getYouTubeEmbedUrl, type MusicPlatform } from '../utils/musicLink'
@@ -46,6 +46,7 @@ export default function RoomBgmPlayer({ roomId }: Props) {
   const [playing, setPlaying] = useState(true)
   const [muted, setMuted] = useState(true)
   const [playerEpoch, setPlayerEpoch] = useState(0)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     const unsubBgm = onSnapshot(doc(db, 'rooms', roomId, 'meta', 'bgm'), (snap) => {
@@ -85,6 +86,29 @@ export default function RoomBgmPlayer({ roomId }: Props) {
     if (trackIndex >= queue.length) setTrackIndex(0)
   }, [queue.length, trackIndex])
 
+  // 모바일 브라우저는 "새로 불러오는" 영상이 소리를 내며 자동재생하는 걸 엄격히 막는다.
+  // 그래서 소리를 켤 때 iframe 자체를 다시 불러오면(mute=0으로 재요청) PC에선 되고
+  // 폰에선 막히는 문제가 생긴다 — 대신 iframe은 항상 무음으로 로드해두고,
+  // 유튜브 플레이어 API(postMessage)로 "이미 재생 중인" 영상의 음소거만 풀어준다.
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const send = (func: string, args: unknown[] = []) => {
+      iframe.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*')
+    }
+    const apply = () => {
+      if (muted) {
+        send('mute')
+      } else {
+        send('unMute')
+        send('setVolume', [100])
+      }
+    }
+    // 유튜브 플레이어 스크립트가 아직 준비되지 않았을 수 있어 잠깐 동안 재시도한다.
+    const timers = [0, 200, 500, 1000, 2000, 3500].map((delay) => setTimeout(apply, delay))
+    return () => timers.forEach(clearTimeout)
+  }, [muted, playerEpoch, trackIndex])
+
   if (!bgm) return null
 
   const current = queue[trackIndex] ?? queue[0]
@@ -92,11 +116,14 @@ export default function RoomBgmPlayer({ roomId }: Props) {
   const canNext = queue.length > 1
   const queueLabel = queue.length > 1 ? `${trackIndex + 1}/${queue.length}` : null
 
+  // iframe의 src는 항상 무음으로 요청한다 — 소리는 postMessage로 나중에 켠다(위 useEffect 참고).
+  // src에 muted 상태를 반영해버리면 소리를 켤 때마다 iframe이 다시 로드되면서
+  // 모바일 자동재생 정책에 걸려 소리가 안 나오는 문제가 생긴다.
   const youtubeEmbed =
     isYoutube && playing && current
       ? getYouTubeEmbedUrl(current.url, {
           autoplay: true,
-          mute: muted,
+          mute: true,
           loop: queue.length === 1,
           controls: false,
         })
@@ -218,7 +245,8 @@ export default function RoomBgmPlayer({ roomId }: Props) {
       {youtubeEmbed && (
         <div className="room-bgm-player-audio-engine" aria-hidden>
           <iframe
-            key={`${playerEpoch}-${trackIndex}-${muted ? 'm' : 'u'}`}
+            ref={iframeRef}
+            key={`${playerEpoch}-${trackIndex}`}
             src={youtubeEmbed}
             title={`방 BGM: ${display.title}`}
             allow="autoplay; encrypted-media"

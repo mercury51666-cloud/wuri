@@ -123,6 +123,10 @@ export function getYouTubeEmbedUrl(
     rel: '0',
     playsinline: '1',
     iv_load_policy: '3',
+    // postMessage로 음소거를 나중에 해제하려면 JS API가 켜져 있어야 하고,
+    // 보안상 origin이 명시돼 있어야 유튜브 쪽에서 명령을 받아준다.
+    enablejsapi: '1',
+    origin: typeof window !== 'undefined' ? window.location.origin : '',
   })
   return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`
 }
