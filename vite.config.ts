@@ -17,8 +17,10 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2}'],
-        globIgnores: ['**/index.html'],
+        // index.html도 반드시 프리캐시 목록에 포함되어야 한다 — src/sw.ts에서
+        // createHandlerBoundToURL('/index.html')로 참조하는데, 목록에 없으면
+        // SW 스크립트 실행 자체가 "non-precached-url" 에러로 죽어버린다.
+        globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2,html}'],
       },
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
