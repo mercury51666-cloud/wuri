@@ -1152,6 +1152,7 @@ html, body {
 }
 .music-card-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   gap: 12px;
   padding: 12px;
