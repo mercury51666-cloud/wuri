@@ -22,26 +22,36 @@ export async function isPushSupported(): Promise<boolean> {
   return Boolean(await getMessagingInstance())
 }
 
+export interface FcmRegisterResult {
+  token: string | null
+  /** 실패했을 때 화면에 보여줄 수 있는 진단용 사유 */
+  reason?: string
+}
+
 /** 알림 권한 허용 후 FCM 토큰을 받아 내 유저 문서에 저장한다.
- * 토큰을 못 받으면(미지원 환경, VAPID 키 누락 등) null을 반환 — 이때는
- * 로컬 알림(앱이 열려 있을 때만 동작)으로 자연스럽게 대체된다. */
-export async function registerFcmToken(uid: string): Promise<string | null> {
+ * 토큰을 못 받으면(미지원 환경, VAPID 키 누락 등) reason과 함께 null을 반환 —
+ * 이때는 로컬 알림(앱이 열려 있을 때만 동작)으로 자연스럽게 대체된다. */
+export async function registerFcmToken(uid: string): Promise<FcmRegisterResult> {
   try {
-    const messaging = await getMessagingInstance()
-    if (!messaging) return null
+    const supported = 'serviceWorker' in navigator && (await isSupported())
+    if (!supported) return { token: null, reason: '이 브라우저/환경은 웹 푸시를 지원하지 않아요' }
+    if (!isFirebaseConfigured()) return { token: null, reason: 'Firebase 설정이 비어 있어요' }
+
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined
-    if (!vapidKey) {
-      console.warn('[WURI push] VITE_FIREBASE_VAPID_KEY가 설정되지 않았어요')
-      return null
-    }
+    if (!vapidKey) return { token: null, reason: 'VITE_FIREBASE_VAPID_KEY 환경 변수가 없어요' }
+
+    const messaging = getMessaging(app)
     const registration = await navigator.serviceWorker.ready
     const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration })
-    if (!token) return null
+    if (!token) return { token: null, reason: 'getToken이 빈 값을 반환했어요' }
+
     await setDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) }, { merge: true })
-    return token
+    return { token }
   } catch (err) {
+    const code = (err as { code?: string; message?: string })?.code
+    const message = (err as { message?: string })?.message
     console.error('[WURI push] 토큰 등록 실패', err)
-    return null
+    return { token: null, reason: code ?? message ?? String(err) }
   }
 }
 

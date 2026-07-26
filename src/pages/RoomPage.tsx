@@ -359,13 +359,14 @@ export default function RoomPage() {
     if (result === 'granted') {
       setNotificationsEnabled(true)
       localStorage.setItem('wuri_notifications', '1')
-      const token = user ? await registerFcmToken(user.uid) : null
+      if (!user) return
+      const { token, reason } = await registerFcmToken(user.uid)
       setPushReady(Boolean(token))
-      toast(
-        token
-          ? '알림 켰어요! 앱을 나가거나 종료해도 새 메시지를 알려줘요'
-          : '알림 켰어요! 다른 앱을 볼 때 새 메시지를 알려줘요',
-      )
+      if (token) {
+        toast('알림 켰어요! 앱을 나가거나 종료해도 새 메시지를 알려줘요')
+      } else {
+        toast(`알림 켰어요! (푸시 등록 실패: ${reason ?? '알 수 없음'})`)
+      }
       return
     }
     toast('설정에서 알림을 허용해주세요')
@@ -374,7 +375,7 @@ export default function RoomPage() {
   // 알림을 이미 허용한 상태로 재방문한 경우 푸시 토큰을 조용히 재등록(만료 대비)
   useEffect(() => {
     if (!user || !notificationsEnabled) return
-    registerFcmToken(user.uid).then((token) => setPushReady(Boolean(token))).catch(() => {})
+    registerFcmToken(user.uid).then(({ token }) => setPushReady(Boolean(token))).catch(() => {})
   }, [user, notificationsEnabled])
 
   useEffect(() => {
