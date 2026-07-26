@@ -112,6 +112,8 @@ export default function RoomPage() {
   // 푸시 토큰이 등록되면 백그라운드/종료 상태 알림은 서비스워커가 담당하므로
   // 로컬(탭 열려있을 때만 동작하는) 알림은 중복을 막기 위해 끈다.
   const [pushReady, setPushReady] = useState(false)
+  // iOS 홈 화면 앱(standalone)에서는 alert()가 안 뜨는 경우가 있어 직접 모달로 진단 결과를 보여준다.
+  const [pushDiagnostic, setPushDiagnostic] = useState<string | null>(null)
   const [featureModal, setFeatureModal] = useState<'poll' | 'schedule' | 'birthday' | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
@@ -351,30 +353,31 @@ export default function RoomPage() {
   useMessageNotifications(messages, user?.uid, room?.name ?? '우리방', notificationsEnabled && !pushReady)
 
   const enableNotifications = async () => {
+    setPushDiagnostic('확인 중...')
     const result = await requestNotificationPermission()
     if (result === 'unsupported') {
-      window.alert('이 브라우저는 알림을 지원하지 않아요')
+      setPushDiagnostic('이 브라우저는 알림을 지원하지 않아요')
       return
     }
     if (result === 'granted') {
       setNotificationsEnabled(true)
       localStorage.setItem('wuri_notifications', '1')
       if (!user) {
-        window.alert('진단 실패: 로그인 정보(user)를 못 찾았어요. 화면을 새로고침한 뒤 다시 시도해주세요.')
+        setPushDiagnostic('진단 실패: 로그인 정보(user)를 못 찾았어요. 화면을 새로고침한 뒤 다시 시도해주세요.')
         return
       }
       const { token, reason } = await registerFcmToken(user.uid)
       setPushReady(Boolean(token))
       if (token) {
-        window.alert(
+        setPushDiagnostic(
           `✅ 푸시 등록 성공\n토큰: ${token.slice(0, 24)}...\n\n앱을 나가거나 종료해도 새 메시지를 알려줘요.`,
         )
       } else {
-        window.alert(`❌ 푸시 등록 실패\n사유: ${reason ?? '알 수 없음'}`)
+        setPushDiagnostic(`❌ 푸시 등록 실패\n사유: ${reason ?? '알 수 없음'}`)
       }
       return
     }
-    window.alert('설정에서 알림을 허용해주세요')
+    setPushDiagnostic('설정에서 알림을 허용해주세요')
   }
 
   // 알림을 이미 허용한 상태로 재방문한 경우 푸시 토큰을 조용히 재등록(만료 대비)
@@ -1276,6 +1279,31 @@ export default function RoomPage() {
               <button type="button" onClick={() => setDeleteTarget(null)} className="btn btn-secondary flex-1">취소</button>
               <button type="button" onClick={confirmDeleteMessage} className="btn flex-1 bg-[var(--danger)] text-white font-bold">삭제</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {pushDiagnostic && (
+        <div
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          onClick={() => setPushDiagnostic(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-3">🔔</div>
+            <h3 className="text-base font-bold text-gray-800 dark:text-white mb-3">알림(푸시) 상태</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 whitespace-pre-wrap break-all text-left">
+              {pushDiagnostic}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPushDiagnostic(null)}
+              className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-600 text-white font-bold transition-colors"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}
