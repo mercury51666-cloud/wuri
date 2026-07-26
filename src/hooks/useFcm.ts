@@ -51,11 +51,26 @@ export async function registerFcmToken(uid: string): Promise<FcmRegisterResult> 
     if (!vapidKey) return { token: null, reason: 'VITE_FIREBASE_VAPID_KEY 환경 변수가 없어요' }
 
     const messaging = getMessaging(app)
-    const registration = await withTimeout(
-      navigator.serviceWorker.ready,
-      8000,
-      '서비스워커가 8초 안에 준비되지 않았어요(설치 실패 가능성)',
-    )
+
+    let registration: ServiceWorkerRegistration
+    try {
+      registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    } catch (err) {
+      const msg = (err as { message?: string })?.message ?? String(err)
+      return { token: null, reason: `서비스워커 등록 자체가 실패했어요: ${msg}` }
+    }
+
+    try {
+      await withTimeout(navigator.serviceWorker.ready, 8000, 'SW_READY_TIMEOUT')
+    } catch {
+      const state = [
+        registration.installing && 'installing(스크립트 실행 중 멈춤)',
+        registration.waiting && 'waiting(다른 탭이 열려있어 대기 중)',
+        registration.active && 'active(활성인데도 ready 미응답)',
+      ].filter(Boolean).join(', ') || '상태 없음'
+      return { token: null, reason: `서비스워커가 8초 안에 준비되지 않았어요 (등록은 성공, 상태: ${state})` }
+    }
+
     const token = await withTimeout(
       getToken(messaging, { vapidKey, serviceWorkerRegistration: registration }),
       10000,
