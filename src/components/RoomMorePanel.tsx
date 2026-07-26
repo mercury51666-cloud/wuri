@@ -126,9 +126,8 @@ export default function RoomMorePanel({
           {typeof Notification !== 'undefined' && (
             <MenuRow
               icon={Bell}
-              label={notificationsEnabled ? '알림 켜짐' : '새 메시지 알림 켜기'}
+              label={notificationsEnabled ? '알림 켜짐 (탭하면 상태 재확인)' : '새 메시지 알림 켜기'}
               onClick={onEnableNotifications}
-              disabled={notificationsEnabled}
             />
           )}
           <MenuRow icon={dark ? Sun : Moon} label={dark ? '라이트 모드' : '다크 모드'} onClick={onToggleDark} />
