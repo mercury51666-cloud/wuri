@@ -709,12 +709,20 @@ export default function RoomPage() {
       recordingSecondsRef.current = 0
       shouldSendRecordingRef.current = false
 
+      // 진단용: 마이크 트랙이 녹음 도중 음소거되거나 끊기면 오디오가 안 잡힌다.
+      const track = stream.getAudioTracks()[0]
+      let wasMuted = track?.muted ?? false
+      const onTrackMute = () => { wasMuted = true }
+      track?.addEventListener('mute', onTrackMute)
+
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
       recorder.onstop = () => {
+        track?.removeEventListener('mute', onTrackMute)
         stream.getTracks().forEach((t) => t.stop())
         const duration = recordingSecondsRef.current
+        const chunkCount = audioChunksRef.current.length
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
         audioChunksRef.current = []
         if (!shouldSendRecordingRef.current || duration < 1) return
@@ -722,7 +730,8 @@ export default function RoomPage() {
         // 헤더만 있는 빈 파일이 나올 수 있다 — 업로드해서 헷갈리는 서버 에러를
         // 받는 대신 여기서 바로 알려준다.
         if (blob.size < 1000) {
-          toast('녹음이 너무 짧아요. 조금 더 길게 녹음해주세요 🎤')
+          const diag = `${duration}초, 청크 ${chunkCount}개, ${blob.size}B${wasMuted ? ', 마이크 음소거됨' : ''}`
+          toast(`녹음이 너무 짧아요. 조금 더 길게 녹음해주세요 🎤 (${diag})`)
           return
         }
         sendAudio(blob, duration)
