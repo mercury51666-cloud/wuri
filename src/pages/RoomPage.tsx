@@ -76,6 +76,18 @@ function isRankEventMessage(msg: Message): boolean {
   return msg.messageType === 'rank_event' || msg.type === 'rank_event'
 }
 
+/** 폰이 오래 잠들었다 깨어난 직후처럼 연결이 막 복구되는 타이밍에 첫 시도가
+ * 실패하는 경우가 있어, 곧바로 실패 처리하지 않고 짧게 대기 후 한 번 더 시도한다. */
+async function withOneRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    console.warn('[WURI] 첫 시도 실패, 1.2초 후 재시도', err)
+    await new Promise((r) => setTimeout(r, 1200))
+    return await fn()
+  }
+}
+
 interface Room {
   name: string
   emoji?: string
@@ -552,7 +564,7 @@ export default function RoomPage() {
           ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
         }
       }
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
+      await withOneRetry(() => addDoc(collection(db, 'rooms', roomId, 'messages'), payload))
       awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
       requestMessagePush({
         roomId,
@@ -564,7 +576,8 @@ export default function RoomPage() {
       setText('')
       setReplyTarget(null)
       clearTyping()
-    } catch {
+    } catch (err) {
+      console.error('[WURI] 메시지 전송 실패', err)
       toast('메시지 전송에 실패했어요. 잠시 후 다시 시도해주세요')
     } finally {
       setSending(false)
@@ -592,7 +605,7 @@ export default function RoomPage() {
           ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
         }
       }
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), payload)
+      await withOneRetry(() => addDoc(collection(db, 'rooms', roomId, 'messages'), payload))
       awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
       requestMessagePush({
         roomId,
@@ -602,7 +615,8 @@ export default function RoomPage() {
         imageURL,
       })
       setReplyTarget(null)
-    } catch {
+    } catch (err) {
+      console.error('[WURI] 사진 전송 실패', err)
       toast('사진 전송에 실패했어요. 용량이나 네트워크를 확인해주세요')
     } finally {
       setSending(false)
