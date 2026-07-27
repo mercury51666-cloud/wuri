@@ -127,6 +127,7 @@ export function requestMessagePush(payload: {
   roomName?: string
   text?: string
   imageURL?: string
+  audioURL?: string
 }) {
   fetch('/api/send-push', {
     method: 'POST',

@@ -22,7 +22,7 @@ import ScheduleCalendar from '../components/ScheduleCalendar'
 import PhotoGallery from '../components/PhotoGallery'
 import RoomAvatar from '../components/RoomAvatar'
 import { useUserProfiles } from '../hooks/useUserProfiles'
-import { uploadToCloudinary } from '../utils/cloudinary'
+import { uploadToCloudinary, uploadAudioToCloudinary } from '../utils/cloudinary'
 import { generateJoinCode, normalizeJoinCode, isValidJoinCodeFormat } from '../utils/joinCode'
 import { awardMessagePoints } from '../utils/roomPoints'
 import { postJoinWelcome } from '../utils/rankEvents'
@@ -51,12 +51,15 @@ interface ReplyTo {
   authorName: string
   text: string
   imageURL?: string
+  audioURL?: string
 }
 
 interface Message {
   id: string
   text: string
   imageURL?: string
+  audioURL?: string
+  audioDuration?: number
   authorId: string
   authorName: string
   authorPhotoURL?: string
@@ -144,12 +147,19 @@ export default function RoomPage() {
   const [memberRanks, setMemberRanks] = useState<Record<string, RoomRankData>>({})
   const [myMute, setMyMute] = useState<RoomMute | null>(null)
   const [, setMuteTick] = useState(0)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const roomPhotoInputRef = useRef<HTMLInputElement>(null)
   const muteCooldownRef = useRef<Record<string, number>>({})
   const saluteCooldownRef = useRef(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recordingSecondsRef = useRef(0)
+  const shouldSendRecordingRef = useRef(false)
   const memberProfiles = useUserProfiles(room?.memberIds ?? [])
 
   const REACTION_EMOJIS = useMemo(
@@ -258,8 +268,9 @@ export default function RoomPage() {
     : 0
   const isMuted = muteRemainingSec > 0
 
-  const getReplyPreview = (msg: Pick<Message, 'text' | 'imageURL'>) => {
+  const getReplyPreview = (msg: Pick<Message, 'text' | 'imageURL' | 'audioURL'>) => {
     if (msg.imageURL) return '📷 사진'
+    if (msg.audioURL) return '🎤 음성 메시지'
     const t = msg.text.trim()
     return t.length > 60 ? `${t.slice(0, 60)}…` : t
   }
@@ -340,7 +351,7 @@ export default function RoomPage() {
         {honorific(reply.authorName, replyAuthorPoints)}
       </p>
       <p className={`text-xs leading-snug line-clamp-2 ${isMine ? 'text-white/75' : 'text-gray-500 dark:text-gray-400'}`}>
-        {reply.imageURL ? '📷 사진' : reply.text}
+        {reply.imageURL ? '📷 사진' : reply.audioURL ? '🎤 음성 메시지' : reply.text}
       </p>
     </div>
     )
@@ -562,6 +573,7 @@ export default function RoomPage() {
           authorName: replyTarget.authorName,
           text: replyTarget.text,
           ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
+          ...(replyTarget.audioURL ? { audioURL: replyTarget.audioURL } : {}),
         }
       }
       await withOneRetry(() => addDoc(collection(db, 'rooms', roomId, 'messages'), payload))
@@ -603,6 +615,7 @@ export default function RoomPage() {
           authorName: replyTarget.authorName,
           text: replyTarget.text,
           ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
+          ...(replyTarget.audioURL ? { audioURL: replyTarget.audioURL } : {}),
         }
       }
       await withOneRetry(() => addDoc(collection(db, 'rooms', roomId, 'messages'), payload))
@@ -621,6 +634,117 @@ export default function RoomPage() {
     } finally {
       setSending(false)
     }
+  }
+
+  const sendAudio = async (blob: Blob, duration: number) => {
+    if (!user || !roomId || isMuted) return
+    setSending(true)
+    try {
+      const audioURL = await uploadAudioToCloudinary(blob)
+      const payload: Record<string, unknown> = {
+        text: '',
+        audioURL,
+        audioDuration: duration,
+        authorId: user.uid,
+        authorName: user.displayName || '친구',
+        authorPhotoURL: user.photoURL || '',
+        createdAt: serverTimestamp(),
+      }
+      if (replyTarget) {
+        payload.replyTo = {
+          id: replyTarget.id,
+          authorName: replyTarget.authorName,
+          text: replyTarget.text,
+          ...(replyTarget.imageURL ? { imageURL: replyTarget.imageURL } : {}),
+          ...(replyTarget.audioURL ? { audioURL: replyTarget.audioURL } : {}),
+        }
+      }
+      await withOneRetry(() => addDoc(collection(db, 'rooms', roomId, 'messages'), payload))
+      awardMessagePoints(roomId, user.uid, user.displayName || '친구').catch(() => {})
+      requestMessagePush({
+        roomId,
+        senderId: user.uid,
+        senderName: user.displayName || '친구',
+        roomName: room?.name,
+        audioURL,
+      })
+      setReplyTarget(null)
+    } catch (err) {
+      console.error('[WURI] 음성 메시지 전송 실패', err)
+      toast('음성 메시지 전송에 실패했어요. 잠시 후 다시 시도해주세요')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const MAX_RECORDING_SECONDS = 120
+
+  const pickAudioMimeType = () => {
+    if (typeof MediaRecorder === 'undefined') return undefined
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
+    return candidates.find((type) => MediaRecorder.isTypeSupported?.(type))
+  }
+
+  const finishRecording = (send: boolean) => {
+    shouldSendRecordingRef.current = send
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    mediaRecorderRef.current?.stop()
+    mediaRecorderRef.current = null
+    setIsRecording(false)
+    setRecordingSeconds(0)
+  }
+
+  const startRecording = async () => {
+    if (!user || isMuted || sending || isRecording) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = pickAudioMimeType()
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      audioChunksRef.current = []
+      recordingSecondsRef.current = 0
+      shouldSendRecordingRef.current = false
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const duration = recordingSecondsRef.current
+        if (shouldSendRecordingRef.current && audioChunksRef.current.length > 0 && duration >= 1) {
+          const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+          sendAudio(blob, duration)
+        }
+        audioChunksRef.current = []
+      }
+
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+      setRecordingSeconds(0)
+      recordingTimerRef.current = setInterval(() => {
+        recordingSecondsRef.current += 1
+        setRecordingSeconds(recordingSecondsRef.current)
+        if (recordingSecondsRef.current >= MAX_RECORDING_SECONDS) finishRecording(true)
+      }, 1000)
+    } catch {
+      toast('마이크 권한을 허용해주세요 🎤')
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      mediaRecorderRef.current?.stop()
+    }
+  }, [])
+
+  const formatRecordingTime = (sec: number) => {
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   const changeRoomPhoto = async (file: File) => {
@@ -1078,6 +1202,24 @@ export default function RoomPage() {
                                 className={`max-w-[220px] max-h-[280px] object-cover cursor-pointer ${msg.replyTo || msg.text ? 'mt-1 rounded-xl' : 'rounded-2xl'}`}
                               />
                             )}
+                            {msg.audioURL && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className={`flex items-center gap-2 ${msg.replyTo || msg.text ? 'mt-1' : ''}`}
+                              >
+                                <audio
+                                  controls
+                                  preload="metadata"
+                                  src={msg.audioURL}
+                                  style={{ width: 220, height: 32, accentColor: 'var(--brand)' }}
+                                />
+                                {msg.audioDuration != null && (
+                                  <span className={`text-[10px] shrink-0 ${isMine ? 'text-white/70' : 'text-gray-400'}`}>
+                                    {formatRecordingTime(msg.audioDuration)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1237,20 +1379,48 @@ export default function RoomPage() {
                 </div>
               )}
               <form onSubmit={sendMessage} className="flex items-center gap-2 px-3 py-2">
-                <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
-                  <span className="text-lg">🖼️</span>
-                  <input type="file" accept="image/*" className="hidden" disabled={sending || isMuted}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
-                  />
-                </label>
-                <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }}
-                  placeholder={isMuted ? '벙어리 상태…' : '@이름 멘션 · 메시지 보내기...'}
-                  disabled={isMuted}
-                  className="input-field flex-1 py-2.5 disabled:opacity-50"
-                />
-                <button type="submit" disabled={sending || !text.trim() || isMuted}
-                  className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
-                >{sending ? '⏳' : '→'}</button>
+                {isRecording ? (
+                  <>
+                    <div className="flex-1 flex items-center gap-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl px-3.5 py-2.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                      <span className="text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                        {formatRecordingTime(recordingSeconds)}
+                      </span>
+                      <span className="text-xs text-rose-400">녹음 중...</span>
+                    </div>
+                    <button type="button" onClick={() => finishRecording(false)}
+                      className="icon-btn shrink-0 text-lg" aria-label="녹음 취소"
+                    >🗑️</button>
+                    <button type="button" onClick={() => finishRecording(true)}
+                      className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 flex items-center justify-center text-white shrink-0 transition-all"
+                      aria-label="음성 메시지 보내기"
+                    >✓</button>
+                  </>
+                ) : (
+                  <>
+                    <label className={`icon-btn shrink-0 ${isMuted ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
+                      <span className="text-lg">🖼️</span>
+                      <input type="file" accept="image/*" className="hidden" disabled={sending || isMuted}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) sendImage(f); e.target.value = '' }}
+                      />
+                    </label>
+                    <input type="text" value={text} onChange={(e) => { setText(e.target.value); handleTyping() }}
+                      placeholder={isMuted ? '벙어리 상태…' : '@이름 멘션 · 메시지 보내기...'}
+                      disabled={isMuted}
+                      className="input-field flex-1 py-2.5 disabled:opacity-50"
+                    />
+                    {text.trim() ? (
+                      <button type="submit" disabled={sending || isMuted}
+                        className="w-10 h-10 rounded-xl bg-[var(--brand)] active:scale-90 disabled:opacity-30 flex items-center justify-center text-white shrink-0 transition-all"
+                      >{sending ? '⏳' : '→'}</button>
+                    ) : (
+                      <button type="button" onClick={startRecording} disabled={sending || isMuted}
+                        className={`icon-btn shrink-0 text-lg ${isMuted ? 'opacity-40 pointer-events-none' : ''}`}
+                        aria-label="음성 메시지 녹음"
+                      >🎤</button>
+                    )}
+                  </>
+                )}
               </form>
             </>
           )}

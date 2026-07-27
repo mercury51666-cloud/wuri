@@ -20,6 +20,7 @@ interface PushRequestBody {
   roomName?: string
   text?: string
   imageURL?: string
+  audioURL?: string
 }
 
 export default async function handler(req: any, res: any) {
@@ -38,7 +39,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const body: PushRequestBody = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body ?? {})
-  const { roomId, senderId, senderName, roomName, text, imageURL } = body
+  const { roomId, senderId, senderName, roomName, text, imageURL, audioURL } = body
 
   if (!roomId || !senderId) {
     res.status(400).json({ error: 'missing roomId/senderId' })
@@ -73,7 +74,11 @@ export default async function handler(req: any, res: any) {
       return
     }
 
-    const bodyText = imageURL ? '📷 사진을 보냈어요' : (text ?? '새 메시지').slice(0, 80)
+    const bodyText = imageURL
+      ? '📷 사진을 보냈어요'
+      : audioURL
+      ? '🎤 음성 메시지를 보냈어요'
+      : (text ?? '새 메시지').slice(0, 80)
     const result = await getMessaging().sendEachForMulticast({
       tokens,
       data: {
