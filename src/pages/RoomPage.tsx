@@ -671,7 +671,8 @@ export default function RoomPage() {
       setReplyTarget(null)
     } catch (err) {
       console.error('[WURI] 음성 메시지 전송 실패', err)
-      toast('음성 메시지 전송에 실패했어요. 잠시 후 다시 시도해주세요')
+      const reason = (err as { message?: string })?.message
+      toast(reason ? `음성 메시지 전송 실패: ${reason}` : '음성 메시지 전송에 실패했어요. 잠시 후 다시 시도해주세요')
     } finally {
       setSending(false)
     }
