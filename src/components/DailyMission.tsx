@@ -17,45 +17,10 @@ async function cleanupOldMissions(roomId: string, today: string) {
   }
 }
 
-const OBJECT_POOL = [
-  { emoji: '🔴', theme: '빨간 물건' },
-  { emoji: '🔵', theme: '파란 물건' },
-  { emoji: '🟡', theme: '노란 물건' },
-  { emoji: '🟢', theme: '초록 물건' },
-  { emoji: '⚪', theme: '하얀 물건' },
-  { emoji: '⚫', theme: '검은 물건' },
-  { emoji: '🔲', theme: '네모난 것' },
-  { emoji: '⭕', theme: '동그란 것' },
-  { emoji: '📱', theme: '전자기기' },
-  { emoji: '🍽️', theme: '먹을 것' },
-  { emoji: '👟', theme: '신발' },
-  { emoji: '📚', theme: '책 또는 공책' },
-  { emoji: '🌿', theme: '식물' },
-  { emoji: '🪟', theme: '창문 밖 풍경' },
-  { emoji: '☁️', theme: '하늘' },
-  { emoji: '💡', theme: '빛나는 것' },
-  { emoji: '🪑', theme: '앉을 수 있는 것' },
-  { emoji: '🧃', theme: '음료' },
-  { emoji: '🎒', theme: '가방' },
-  { emoji: '🕐', theme: '시계 또는 시간' },
-  { emoji: '🌸', theme: '꽃 또는 꽃무늬' },
-  { emoji: '🪞', theme: '내 손 또는 발' },
-  { emoji: '🖼️', theme: '그림 또는 포스터' },
-  { emoji: '🧸', theme: '귀여운 것' },
-  { emoji: '🌙', theme: '지금 내 주변' },
+const MISSIONS = [
+  { emoji: '👗', theme: '오늘의 OOTD', type: 'photo' as const },
+  { emoji: '🎵', theme: '오늘의 추천 노래', type: 'song' as const },
 ]
-
-function getTodayMissions() {
-  const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
-  )
-  const indices = [
-    dayOfYear % OBJECT_POOL.length,
-    (dayOfYear + 7) % OBJECT_POOL.length,
-    (dayOfYear + 17) % OBJECT_POOL.length,
-  ]
-  return indices.map((i) => OBJECT_POOL[i])
-}
 
 async function uploadToCloudinary(file: File): Promise<string> {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
@@ -76,7 +41,9 @@ interface Upload {
   missionIdx: number
   userId: string
   userName: string
-  url: string
+  url?: string
+  songTitle?: string
+  songArtist?: string
 }
 
 interface MissionData {
@@ -110,9 +77,11 @@ export default function DailyMission({ roomId }: Props) {
   const [uploading, setUploading] = useState<number | null>(null)
   const [streak, setStreak] = useState(0)
   const [pointToast, setPointToast] = useState('')
-  const fileRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
+  const [songArtist, setSongArtist] = useState('')
+  const [songTitle, setSongTitle] = useState('')
+  const fileRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
   const today = new Date().toISOString().slice(0, 10)
-  const missions = getTodayMissions()
+  const missions = MISSIONS
 
   useEffect(() => {
     if (!user) return
@@ -135,42 +104,46 @@ export default function DailyMission({ roomId }: Props) {
     (data?.uploads ?? []).filter((u) => u.userId === user?.uid).map((u) => u.missionIdx)
   )
 
-  const handleUpload = async (missionIdx: number, file: File) => {
+  const submitMission = async (missionIdx: number, extra: Partial<Upload>) => {
     if (!user) return
     const alreadyDone = myUploads.has(missionIdx)
+    const ref = doc(db, 'rooms', roomId, 'meta', `photoMission_${today}`)
+    await setDoc(ref, {
+      date: today,
+      uploads: arrayUnion({
+        missionIdx,
+        userId: user.uid,
+        userName: user.displayName ?? user.email ?? '익명',
+        ...extra,
+      }),
+    }, { merge: true })
+
+    const currentUploads = new Set(
+      (data?.uploads ?? []).filter((u) => u.userId === user.uid).map((u) => u.missionIdx)
+    )
+    currentUploads.add(missionIdx)
+    if (currentUploads.size >= MISSIONS.length) {
+      await updateStreak(roomId, user.uid, today)
+    }
+
+    if (!alreadyDone) {
+      const result = await awardMissionPoints(
+        roomId,
+        user.uid,
+        user.displayName ?? user.email ?? '익명',
+        today,
+        currentUploads.size >= MISSIONS.length,
+      )
+      setPointToast(`+${result.gained}점 · ${result.label}`)
+      setTimeout(() => setPointToast(''), 2500)
+    }
+  }
+
+  const handleUpload = async (missionIdx: number, file: File) => {
     setUploading(missionIdx)
     try {
       const url = await uploadToCloudinary(file)
-      const ref = doc(db, 'rooms', roomId, 'meta', `photoMission_${today}`)
-      await setDoc(ref, {
-        date: today,
-        uploads: arrayUnion({
-          missionIdx,
-          userId: user.uid,
-          userName: user.displayName ?? user.email ?? '익명',
-          url,
-        }),
-      }, { merge: true })
-
-      const currentUploads = new Set(
-        (data?.uploads ?? []).filter((u) => u.userId === user.uid).map((u) => u.missionIdx)
-      )
-      currentUploads.add(missionIdx)
-      if (currentUploads.size >= 3) {
-        await updateStreak(roomId, user.uid, today)
-      }
-
-      if (!alreadyDone) {
-        const result = await awardMissionPoints(
-          roomId,
-          user.uid,
-          user.displayName ?? user.email ?? '익명',
-          today,
-          currentUploads.size >= 3,
-        )
-        setPointToast(`+${result.gained}점 · ${result.label}`)
-        setTimeout(() => setPointToast(''), 2500)
-      }
+      await submitMission(missionIdx, { url })
     } catch {
       alert('업로드 실패! Cloudinary 설정을 확인해주세요.')
     } finally {
@@ -178,14 +151,31 @@ export default function DailyMission({ roomId }: Props) {
     }
   }
 
-  const completedAll = myUploads.size >= 3
+  const handleSongSubmit = async (missionIdx: number) => {
+    if (!songArtist.trim() || !songTitle.trim()) return
+    setUploading(missionIdx)
+    try {
+      await submitMission(missionIdx, {
+        songArtist: songArtist.trim(),
+        songTitle: songTitle.trim(),
+      })
+      setSongArtist('')
+      setSongTitle('')
+    } catch {
+      alert('등록 실패! 잠시 후 다시 시도해주세요.')
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  const completedAll = myUploads.size >= MISSIONS.length
 
   return (
     <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 rounded-3xl p-5 border border-amber-100 dark:border-amber-800">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-full">
-            오늘의 사진 미션
+            오늘의 미션
           </span>
           <span className="text-xs text-gray-400">{today}</span>
         </div>
@@ -205,7 +195,7 @@ export default function DailyMission({ roomId }: Props) {
       </div>
 
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        아래 3가지 물건을 찾아서 사진 찍어 올려봐요!
+        오늘의 코디 사진과 추천 노래를 공유해봐요!
       </p>
 
       <div className="flex flex-col gap-3">
@@ -222,7 +212,7 @@ export default function DailyMission({ roomId }: Props) {
                   <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{mission.theme}</span>
                   {myDone && <span className="text-xs text-green-500 font-bold">✓ 완료</span>}
                 </div>
-                {!myDone && (
+                {!myDone && mission.type === 'photo' && (
                   <>
                     <button
                       onClick={() => fileRefs[idx].current?.click()}
@@ -247,20 +237,62 @@ export default function DailyMission({ roomId }: Props) {
                 )}
               </div>
 
+              {!myDone && mission.type === 'song' && (
+                <div className="flex flex-col gap-2 mt-1">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={songArtist}
+                      onChange={(e) => setSongArtist(e.target.value)}
+                      placeholder="가수"
+                      className="input-field flex-1 text-sm"
+                      style={{ fontSize: '16px' }}
+                    />
+                    <input
+                      type="text"
+                      value={songTitle}
+                      onChange={(e) => setSongTitle(e.target.value)}
+                      placeholder="노래 제목"
+                      className="input-field flex-1 text-sm"
+                      style={{ fontSize: '16px' }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleSongSubmit(idx)}
+                    disabled={isUploading || !songArtist.trim() || !songTitle.trim()}
+                    className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl font-bold transition-colors disabled:opacity-50 self-end"
+                  >
+                    {isUploading ? '등록 중...' : '🎵 추천하기'}
+                  </button>
+                </div>
+              )}
+
               {missionUploads.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
-                  {missionUploads.map((upload, i) => (
-                    <div key={i} className="relative">
-                      <img
-                        src={upload.url}
-                        alt={mission.theme}
-                        className="w-16 h-16 object-cover rounded-xl border-2 border-amber-200 dark:border-amber-700"
-                      />
-                      <span className="absolute -bottom-1 -right-1 text-xs bg-white dark:bg-gray-700 rounded-full px-1 border border-gray-200 dark:border-gray-600">
-                        {upload.userName.slice(0, 2)}
-                      </span>
-                    </div>
-                  ))}
+                  {missionUploads.map((upload, i) =>
+                    upload.url ? (
+                      <div key={i} className="relative">
+                        <img
+                          src={upload.url}
+                          alt={mission.theme}
+                          className="w-16 h-16 object-cover rounded-xl border-2 border-amber-200 dark:border-amber-700"
+                        />
+                        <span className="absolute -bottom-1 -right-1 text-xs bg-white dark:bg-gray-700 rounded-full px-1 border border-gray-200 dark:border-gray-600">
+                          {upload.userName.slice(0, 2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        key={i}
+                        className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full px-3 py-1.5"
+                      >
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200">
+                          {upload.songArtist} - {upload.songTitle}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{upload.userName.slice(0, 2)}</span>
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -269,7 +301,7 @@ export default function DailyMission({ roomId }: Props) {
       </div>
 
       <div className="mt-3 flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
+        {MISSIONS.map((_, i) => (
           <div
             key={i}
             className={`flex-1 h-1.5 rounded-full transition-colors ${
@@ -277,7 +309,7 @@ export default function DailyMission({ roomId }: Props) {
             }`}
           />
         ))}
-        <span className="text-xs text-gray-400 ml-1">{myUploads.size}/3</span>
+        <span className="text-xs text-gray-400 ml-1">{myUploads.size}/{MISSIONS.length}</span>
       </div>
     </div>
   )

@@ -95,7 +95,7 @@ wuri/
     │   ├── MoodBoard.tsx        # 오늘 기분
     │   ├── ScheduleCalendar.tsx # 약속 일정
     │   ├── EventRsvp.tsx        # 참석/불참/미정
-    │   ├── DailyMission.tsx     # 오늘의 사진 미션
+    │   ├── DailyMission.tsx     # 오늘의 미션 (OOTD 사진 + 추천 노래)
     │   ├── PhotoGallery.tsx     # 채팅 사진 모아보기
     │   ├── RankBoard.tsx        # 계급 순위
     │   ├── PollMessage.tsx      # 채팅 속 투표
@@ -146,7 +146,7 @@ wuri/
 | 사진 | 갤러리 | `PhotoGallery.tsx` |
 | 일정 | 달력 + RSVP | `ScheduleCalendar.tsx`, `EventRsvp.tsx` |
 | 더보기 → 기분 | 오늘 mood | `MoodBoard.tsx` |
-| 더보기 → 미션 | 사진 미션 | `DailyMission.tsx` |
+| 더보기 → 미션 | OOTD·추천 노래 미션 | `DailyMission.tsx` |
 | 더보기 → 친구 지도 | 위치 공유 | `LocationMap.tsx`, `reverseGeocodeKo.ts` |
 | 더보기 → 계급 | 순위·포인트 | `RankBoard.tsx`, `RoomStats.tsx` |
 
