@@ -4,12 +4,22 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { awardMissionPoints } from '../utils/roomPoints'
 
+// 미션 구성(OOTD+노래)이 예전 버전(랜덤 물건 찾기)과 호환되지 않으므로 버전을 못박아서
+// 문서 키에 넣는다 — 같은 날짜 안에서 미션 내용이 바뀌어도 예전 데이터가 새 미션 칸에
+// 잘못 섞여 보이지 않고, cleanupOldMissions가 자동으로 지워준다.
+const MISSION_VERSION = 'v2'
+
+function missionDocId(today: string) {
+  return `photoMission_${MISSION_VERSION}_${today}`
+}
+
 async function cleanupOldMissions(roomId: string, today: string) {
   try {
     const metaRef = collection(db, 'rooms', roomId, 'meta')
     const snapshot = await getDocs(metaRef)
+    const currentId = missionDocId(today)
     const deletions = snapshot.docs
-      .filter((d) => d.id.startsWith('photoMission_') && d.id !== `photoMission_${today}`)
+      .filter((d) => d.id.startsWith('photoMission_') && d.id !== currentId)
       .map((d) => deleteDoc(d.ref))
     await Promise.all(deletions)
   } catch {
@@ -93,7 +103,7 @@ export default function DailyMission({ roomId }: Props) {
 
   useEffect(() => {
     cleanupOldMissions(roomId, today)
-    const ref = doc(db, 'rooms', roomId, 'meta', `photoMission_${today}`)
+    const ref = doc(db, 'rooms', roomId, 'meta', missionDocId(today))
     return onSnapshot(ref, (snap) => {
       if (snap.exists()) setData(snap.data() as MissionData)
       else setData({ date: today, uploads: [] })
@@ -107,7 +117,7 @@ export default function DailyMission({ roomId }: Props) {
   const submitMission = async (missionIdx: number, extra: Partial<Upload>) => {
     if (!user) return
     const alreadyDone = myUploads.has(missionIdx)
-    const ref = doc(db, 'rooms', roomId, 'meta', `photoMission_${today}`)
+    const ref = doc(db, 'rooms', roomId, 'meta', missionDocId(today))
     await setDoc(ref, {
       date: today,
       uploads: arrayUnion({
