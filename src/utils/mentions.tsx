@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 
 export function parseMentionIds(
   text: string,
-  profiles: Record<string, { displayName: string }>,
+  profiles: Record<string, { displayName?: string }>,
 ): string[] {
   const ids: string[] = []
   for (const [uid, p] of Object.entries(profiles)) {
-    const name = p.displayName.trim()
+    const name = (p.displayName ?? '').trim()
     if (name && text.includes(`@${name}`)) ids.push(uid)
   }
   return [...new Set(ids)]

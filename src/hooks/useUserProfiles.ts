@@ -12,9 +12,14 @@ const cache: Record<string, UserProfile> = {}
 export async function getUserProfile(uid: string): Promise<UserProfile> {
   if (cache[uid]) return cache[uid]
   const snap = await getDoc(doc(db, 'users', uid))
-  const profile: UserProfile = snap.exists()
-    ? (snap.data() as UserProfile)
-    : { displayName: '친구', photoURL: '' }
+  const data = snap.exists() ? (snap.data() as Partial<UserProfile>) : {}
+  // 문서가 fcmTokens 등 다른 필드만으로 먼저 생성돼서 displayName/photoURL이
+  // 아예 없는 경우가 있다 — 항상 완전한 형태로 채워서 돌려줘야 이걸 쓰는
+  // 쪽(예: @멘션 파싱)에서 undefined로 인한 예외가 나지 않는다.
+  const profile: UserProfile = {
+    displayName: data.displayName || '친구',
+    photoURL: data.photoURL || '',
+  }
   cache[uid] = profile
   return profile
 }
