@@ -4,6 +4,7 @@ import { authRedirectError, authRedirectPromise } from '../authBootstrap'
 import { auth } from '../firebase'
 import { isAuthRedirectPending } from '../utils/inviteStorage'
 import { isOAuthReturnUrl, oauthReturnFailureMessage, parseAuthUrlError } from '../utils/authErrors'
+import { ensureProfileSeeded } from './useUserProfiles'
 
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(() => auth.currentUser)
@@ -36,7 +37,10 @@ export function useAuthState() {
         if (cancelled) return
         setUser(currentUser)
         setLoading(false)
-        if (currentUser) setAuthError(null)
+        if (currentUser) {
+          setAuthError(null)
+          ensureProfileSeeded(currentUser.uid, currentUser.displayName, currentUser.photoURL).catch(() => {})
+        }
       })
 
       if (auth.currentUser) {
