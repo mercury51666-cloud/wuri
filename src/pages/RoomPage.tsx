@@ -715,14 +715,23 @@ export default function RoomPage() {
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop())
         const duration = recordingSecondsRef.current
-        if (shouldSendRecordingRef.current && audioChunksRef.current.length > 0 && duration >= 1) {
-          const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-          sendAudio(blob, duration)
-        }
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
         audioChunksRef.current = []
+        if (!shouldSendRecordingRef.current || duration < 1) return
+        // 아주 짧게 녹음하면 인코더가 아직 오디오 프레임을 못 만든 채로 끝나서
+        // 헤더만 있는 빈 파일이 나올 수 있다 — 업로드해서 헷갈리는 서버 에러를
+        // 받는 대신 여기서 바로 알려준다.
+        if (blob.size < 1000) {
+          toast('녹음이 너무 짧아요. 조금 더 길게 녹음해주세요 🎤')
+          return
+        }
+        sendAudio(blob, duration)
       }
 
-      recorder.start()
+      // timeslice(250ms)를 줘서 녹음 도중 주기적으로 데이터를 받는다 — 인자 없이
+      // start()하면 정지 시점에 한 번에만 데이터가 나오는데, 일부 모바일 브라우저는
+      // 이때 인코더 플러시가 안 끝나 빈 파일이 되는 경우가 있어 훨씬 안정적이다.
+      recorder.start(250)
       mediaRecorderRef.current = recorder
       setIsRecording(true)
       setRecordingSeconds(0)
