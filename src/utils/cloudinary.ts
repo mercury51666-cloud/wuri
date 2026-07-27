@@ -22,7 +22,10 @@ export async function uploadToCloudinary(file: File): Promise<string> {
 
 function extensionForMime(mime: string): string {
   if (mime.includes('webm')) return 'webm'
-  if (mime.includes('mp4')) return 'm4a'
+  // 아이폰(사파리)은 오디오만 녹음해도 실제로는 mp4(ISO base media) 컨테이너를 만든다.
+  // .m4a로 표시하면 Cloudinary가 m4a 전용 브랜드 검사에 걸려 "Unsupported video
+  // format or file"로 거부하는 경우가 있어, 더 범용적으로 인식되는 mp4로 올린다.
+  if (mime.includes('mp4')) return 'mp4'
   if (mime.includes('ogg')) return 'ogg'
   if (mime.includes('wav')) return 'wav'
   return 'webm'
