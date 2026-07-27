@@ -601,12 +601,20 @@ html, body {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 4px 14px rgba(167, 139, 250, 0.12);
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+.zenly-friend-chip:active { transform: scale(0.96); }
 .dark .zenly-friend-chip {
   background: rgba(255, 255, 255, 0.06);
 }
 .zenly-friend-chip-me {
   background: linear-gradient(160deg, rgba(255, 107, 157, 0.15), rgba(167, 139, 250, 0.12));
+}
+.zenly-friend-chip-selected {
+  box-shadow: 0 0 0 2px var(--chip-color, #a78bfa), 0 4px 14px rgba(167, 139, 250, 0.25);
 }
 .zenly-friend-avatar {
   position: relative;

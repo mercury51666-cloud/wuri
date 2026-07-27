@@ -103,6 +103,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
   const [placeNames, setPlaceNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [myCenter, setMyCenter] = useState<{ lat: number; lng: number } | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [, setTick] = useState(0)
   const watchIdRef = useRef<number | null>(null)
 
@@ -145,6 +146,20 @@ export default function LocationMap({ roomId, visible = true }: Props) {
       setSharing(!!mine)
     }
   }, [locations, user])
+
+  // 선택했던 친구가 위치 공유를 끄면 선택을 풀어서 엉뚱한 좌표를 계속 따라가지 않게 한다.
+  useEffect(() => {
+    if (selectedUserId && !locations.some((l) => l.userId === selectedUserId)) {
+      setSelectedUserId(null)
+    }
+  }, [locations, selectedUserId])
+
+  const focusOnUser = (loc: LocationData) => {
+    setSelectedUserId(loc.userId)
+    const map = mapRef.current
+    if (!map) return
+    map.flyTo([loc.lat, loc.lng], Math.max(map.getZoom(), 15), { duration: 0.8 })
+  }
 
   const startSharing = () => {
     if (!user) return
@@ -197,6 +212,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
   }, [visible])
 
   const myLoc = user ? locations.find((l) => l.userId === user.uid) : null
+  const focusLoc = (selectedUserId && locations.find((l) => l.userId === selectedUserId)) || myLoc
   const center = myLoc
     ? { lat: myLoc.lat, lng: myLoc.lng }
     : locations[0]
@@ -256,7 +272,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
           >
             <TileLayer attribution={MAP_TILES.attribution} url={MAP_TILES.url} />
             <MapResizer />
-            {myLoc && <RecenterMap lat={myLoc.lat} lng={myLoc.lng} />}
+            {focusLoc && <RecenterMap lat={focusLoc.lat} lng={focusLoc.lng} />}
             {locations.map((loc) => (
               <Marker
                 key={`${loc.userId}-${placeNames[loc.userId] ?? ''}`}
@@ -268,6 +284,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
                   loc.userId === user?.uid,
                   placeNames[loc.userId]
                 )}
+                eventHandlers={{ click: () => focusOnUser(loc) }}
               />
             ))}
           </MapContainer>
@@ -287,9 +304,11 @@ export default function LocationMap({ roomId, visible = true }: Props) {
           <p className="zenly-friends-label">📍 지금 여기 있는 친구</p>
           <div className="zenly-friends-scroll">
             {sortedLocations.map((loc) => (
-              <div
+              <button
                 key={loc.userId}
-                className={`zenly-friend-chip ${loc.userId === user?.uid ? 'zenly-friend-chip-me' : ''}`}
+                type="button"
+                onClick={() => focusOnUser(loc)}
+                className={`zenly-friend-chip ${loc.userId === user?.uid ? 'zenly-friend-chip-me' : ''} ${loc.userId === selectedUserId ? 'zenly-friend-chip-selected' : ''}`}
                 style={{ '--chip-color': colorMap[loc.userId] } as CSSProperties}
               >
                 <div
@@ -310,7 +329,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
                   {placeNames[loc.userId] ?? '찾는 중…'}
                 </span>
                 <span className="zenly-friend-time">{timeAgo(loc.updatedAt)}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
