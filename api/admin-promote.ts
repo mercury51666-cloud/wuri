@@ -43,6 +43,7 @@ function getWeekKey(date = new Date()): string {
 }
 
 export default async function handler(req: any, res: any) {
+  try {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method not allowed' })
     return
@@ -51,6 +52,11 @@ export default async function handler(req: any, res: any) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body ?? {})
   if (body.secret !== ADMIN_SECRET) {
     res.status(403).json({ error: 'forbidden' })
+    return
+  }
+
+  if (body.ping) {
+    res.status(200).json({ pong: true })
     return
   }
 
@@ -139,5 +145,13 @@ export default async function handler(req: any, res: any) {
   } catch (err) {
     console.error('[admin-promote] failed', err)
     res.status(500).json({ error: String((err as Error)?.message ?? err) })
+  }
+  } catch (outerErr) {
+    console.error('[admin-promote] outer failed', outerErr)
+    try {
+      res.status(500).json({ error: 'outer: ' + String((outerErr as Error)?.message ?? outerErr) })
+    } catch {
+      res.end('outer crash')
+    }
   }
 }
