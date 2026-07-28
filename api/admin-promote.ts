@@ -1,4 +1,5 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
+import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 
 function initAdmin() {
@@ -17,8 +18,14 @@ export default async function handler(req: any, res: any) {
     initAdmin()
     const db = getFirestore()
     void db
-    res.status(200).json({ pong: true, step: 'app+firestore' })
+    const body = req.body ?? {}
+    if (body.email) {
+      const authUser = await getAuth().getUserByEmail(body.email)
+      res.status(200).json({ pong: true, step: 'app+firestore+auth', uid: authUser.uid })
+      return
+    }
+    res.status(200).json({ pong: true, step: 'app+firestore+auth', authLoaded: typeof getAuth })
   } catch (err) {
-    res.status(500).json({ error: String((err as Error)?.message ?? err) })
+    res.status(500).json({ error: String((err as Error)?.message ?? err), stack: (err as Error)?.stack })
   }
 }
