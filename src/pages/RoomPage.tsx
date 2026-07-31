@@ -73,6 +73,8 @@ interface Message {
   pollOptions?: string[]
   pollVotes?: Record<string, string[]>
   mentions?: string[]
+  /** 이 uid들 눈에는 이 메시지가 안 보인다 (나에게서만 삭제) */
+  hiddenFor?: string[]
 }
 
 function isRankEventMessage(msg: Message): boolean {
@@ -280,13 +282,27 @@ export default function RoomPage() {
     setReactionTarget(null)
   }
 
-  const deleteMessage = async (msg: Message) => {
-    if (!user || !roomId || msg.authorId !== user.uid) return
+  const deleteMessage = (msg: Message) => {
+    if (!user || !roomId) return
     setDeleteTarget(msg)
   }
 
-  const confirmDeleteMessage = async () => {
-    if (!deleteTarget || !roomId) return
+  const confirmDeleteForMe = async () => {
+    if (!deleteTarget || !roomId || !user) return
+    try {
+      await updateDoc(doc(db, 'rooms', roomId, 'messages', deleteTarget.id), {
+        hiddenFor: arrayUnion(user.uid),
+      })
+      setReactionTarget(null)
+    } catch {
+      toast('메시지 삭제에 실패했어요')
+    } finally {
+      setDeleteTarget(null)
+    }
+  }
+
+  const confirmDeleteForEveryone = async () => {
+    if (!deleteTarget || !roomId || !user || deleteTarget.authorId !== user.uid) return
     try {
       await deleteDoc(doc(db, 'rooms', roomId, 'messages', deleteTarget.id))
       setReactionTarget(null)
@@ -477,9 +493,11 @@ export default function RoomPage() {
     if (!roomId) return
     const q = query(collection(db, 'rooms', roomId, 'messages'), orderBy('createdAt', 'asc'))
     return onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message)))
+      const uid = user?.uid
+      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message))
+      setMessages(uid ? all.filter((m) => !(m.hiddenFor ?? []).includes(uid)) : all)
     })
-  }, [roomId])
+  }, [roomId, user?.uid])
 
   useEffect(() => {
     if (!roomId) return
@@ -1269,14 +1287,12 @@ export default function RoomPage() {
                                   🫡 경례
                                 </button>
                               )}
-                              {isMine && (
-                                <button
-                                  onClick={() => deleteMessage(msg)}
-                                  className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-red-100 dark:border-red-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-red-500 dark:text-red-400 shadow-xl active:scale-95 transition-all"
-                                >
-                                  🗑️ 삭제
-                                </button>
-                              )}
+                              <button
+                                onClick={() => deleteMessage(msg)}
+                                className="flex items-center gap-1.5 bg-white dark:bg-[#222] border border-red-100 dark:border-red-500/20 rounded-xl px-3 py-2 text-xs font-semibold text-red-500 dark:text-red-400 shadow-xl active:scale-95 transition-all"
+                              >
+                                🗑️ 삭제
+                              </button>
                             </div>
                             <div className="flex gap-1 bg-white dark:bg-[#222] border border-gray-100 dark:border-white/10 rounded-2xl px-2 py-1.5 shadow-xl">
                               {REACTION_EMOJIS.map((emoji) => (
@@ -1478,11 +1494,24 @@ export default function RoomPage() {
           <div className="modal-sheet sheet-enter max-w-sm text-center">
             <div className="text-4xl mb-3">🗑️</div>
             <h3 className="text-lg font-bold text-[var(--text)] mb-2">메시지를 삭제할까요?</h3>
-            <p className="text-sm text-[var(--text-secondary)] mb-6">삭제하면 되돌릴 수 없어요.</p>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setDeleteTarget(null)} className="btn btn-secondary flex-1">취소</button>
-              <button type="button" onClick={confirmDeleteMessage} className="btn flex-1 bg-[var(--danger)] text-white font-bold">삭제</button>
-            </div>
+            {deleteTarget.authorId === user?.uid ? (
+              <>
+                <p className="text-sm text-[var(--text-secondary)] mb-6">삭제하면 되돌릴 수 없어요.</p>
+                <div className="flex flex-col gap-2">
+                  <button type="button" onClick={confirmDeleteForMe} className="btn btn-secondary w-full">나에게서만 삭제</button>
+                  <button type="button" onClick={confirmDeleteForEveryone} className="btn w-full bg-[var(--danger)] text-white font-bold">모두에게서 삭제</button>
+                  <button type="button" onClick={() => setDeleteTarget(null)} className="btn btn-secondary w-full">취소</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--text-secondary)] mb-6">내 화면에서만 사라져요. 상대방에게는 그대로 보여요.</p>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setDeleteTarget(null)} className="btn btn-secondary flex-1">취소</button>
+                  <button type="button" onClick={confirmDeleteForMe} className="btn flex-1 bg-[var(--danger)] text-white font-bold">삭제</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

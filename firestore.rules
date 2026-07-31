@@ -22,6 +22,28 @@ service cloud.firestore {
 
 
 
+    // "나에게서만 삭제" — 본인 uid 하나만 hiddenFor 배열에 추가하는 변경만 허용한다.
+
+    function onlySelfHiddenForAdded() {
+
+      let before = resource.data.get('hiddenFor', []);
+
+      let after = request.resource.data.hiddenFor;
+
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
+
+        && after is list
+
+        && after.hasAll(before)
+
+        && after.hasAny([request.auth.uid])
+
+        && after.size() == before.size() + 1;
+
+    }
+
+
+
     match /users/{userId} {
 
       allow read: if request.auth != null;
@@ -75,6 +97,8 @@ service cloud.firestore {
           request.auth.uid == resource.data.authorId
 
           || onlyReactionsChanged()
+
+          || onlySelfHiddenForAdded()
 
         );
 
