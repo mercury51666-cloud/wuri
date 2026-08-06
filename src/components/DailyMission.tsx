@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { awardMissionPoints } from '../utils/roomPoints'
 import { postRankEvent } from '../utils/rankEvents'
+import { requestMessagePush } from '../hooks/useFcm'
 
 // 미션 구성(OOTD+노래)이 예전 버전(랜덤 물건 찾기)과 호환되지 않으므로 버전을 못박아서
 // 문서 키에 넣는다 — 같은 날짜 안에서 미션 내용이 바뀌어도 예전 데이터가 새 미션 칸에
@@ -150,12 +151,25 @@ export default function DailyMission({ roomId }: Props) {
       setTimeout(() => setPointToast(''), 2500)
 
       const mission = MISSIONS[missionIdx]
+      const missionText = `${userName}님이 ${mission.notifyLabel} 미션을 완료하였습니다 ${mission.emoji}`
       postRankEvent(
         roomId,
         { uid: user.uid, name: userName, photoURL: user.photoURL },
         'mission',
-        `${userName}님이 ${mission.notifyLabel} 미션을 완료하였습니다 ${mission.emoji}`,
+        missionText,
       ).catch(() => {})
+      // 앱을 안 보고 있어도 일반 채팅 메시지처럼 폰 알림이 뜨도록 푸시도 함께 요청한다.
+      getDoc(doc(db, 'rooms', roomId)).then((roomSnap) => {
+        requestMessagePush({
+          roomId,
+          senderId: user.uid,
+          senderName: userName,
+          roomName: roomSnap.exists() ? (roomSnap.data() as { name?: string }).name : undefined,
+          text: missionText,
+        })
+      }).catch(() => {
+        requestMessagePush({ roomId, senderId: user.uid, senderName: userName, text: missionText })
+      })
     }
   }
 
