@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react'
-import { doc, onSnapshot, setDoc, deleteDoc, collection } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot, setDoc, deleteDoc, collection } from 'firebase/firestore'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { db } from '../firebase'
@@ -7,6 +7,8 @@ import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
 import { useToast } from '../contexts/ToastContext'
 import { reverseGeocodeKo } from '../utils/reverseGeocodeKo'
+import { postRankEvent } from '../utils/rankEvents'
+import { requestMessagePush } from '../hooks/useFcm'
 import 'leaflet/dist/leaflet.css'
 
 const MAP_TILES = {
@@ -106,6 +108,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [, setTick] = useState(0)
   const watchIdRef = useRef<number | null>(null)
+  const notifiedSharingRef = useRef(false)
 
   useEffect(() => {
     const ref = collection(db, 'rooms', roomId, 'locations')
@@ -179,6 +182,24 @@ export default function LocationMap({ roomId, visible = true }: Props) {
           lng,
           updatedAt: Date.now(),
         })
+
+        if (!notifiedSharingRef.current) {
+          notifiedSharingRef.current = true
+          const userName = user.displayName ?? user.email?.split('@')[0] ?? '친구'
+          const text = `${userName}님이 위치를 공유하기 시작하였습니다 📍`
+          postRankEvent(roomId, { uid: user.uid, name: userName, photoURL: user.photoURL }, 'location', text).catch(() => {})
+          getDoc(doc(db, 'rooms', roomId)).then((roomSnap) => {
+            requestMessagePush({
+              roomId,
+              senderId: user.uid,
+              senderName: userName,
+              roomName: roomSnap.exists() ? (roomSnap.data() as { name?: string }).name : undefined,
+              text,
+            })
+          }).catch(() => {
+            requestMessagePush({ roomId, senderId: user.uid, senderName: userName, text })
+          })
+        }
       },
       () => {
         toast('위치 권한을 켜주면 친구들이 볼 수 있어요 📍')
@@ -196,6 +217,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
     if (user) await deleteDoc(doc(db, 'rooms', roomId, 'locations', user.uid))
     setSharing(false)
     setMyCenter(null)
+    notifiedSharingRef.current = false
     toast('위치 숨김! 이제 안 보여요 👻')
   }
 
