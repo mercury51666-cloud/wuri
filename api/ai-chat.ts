@@ -93,7 +93,7 @@ export default async function handler(req: any, res: any) {
     if (!geminiRes.ok) {
       const errText = await geminiRes.text().catch(() => '')
       console.error('[ai-chat] gemini error', geminiRes.status, errText)
-      res.status(502).json({ error: `AI 응답에 실패했어요 (${geminiRes.status})` })
+      res.status(502).json({ error: `AI 응답에 실패했어요 (${geminiRes.status}) ${errText.slice(0, 300)}` })
       return
     }
 
