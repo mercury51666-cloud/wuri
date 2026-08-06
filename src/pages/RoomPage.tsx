@@ -37,6 +37,7 @@ import {
 import RankBadge from '../components/RankBadge'
 import ChatBanners from '../components/ChatBanners'
 import PollMessage from '../components/PollMessage'
+import SquishyToy from '../components/SquishyToy'
 import { FeatureModals, ChatFeatureBar } from '../components/FeatureModals'
 import { useRoomExtras } from '../hooks/useRoomExtras'
 import { parseMentionIds, renderTextWithMentions } from '../utils/mentions'
@@ -68,7 +69,7 @@ interface Message {
   reactions?: Reaction
   replyTo?: ReplyTo
   type?: 'rank_event'
-  messageType?: 'rank_event' | 'poll'
+  messageType?: 'rank_event' | 'poll' | 'squishy'
   event?: 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion' | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join' | 'mission'
   pollQuestion?: string
   pollOptions?: string[]
@@ -576,6 +577,7 @@ export default function RoomPage() {
     if (!user || !roomId || !text.trim() || isMuted) return
     setSending(true)
     const msgText = text.trim()
+    const isSquishyTrigger = msgText === '#말랑이'
     try {
       const mentions = parseMentionIds(msgText, memberProfiles)
       const payload: Record<string, unknown> = {
@@ -585,6 +587,7 @@ export default function RoomPage() {
         authorPhotoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
         mentions,
+        ...(isSquishyTrigger ? { messageType: 'squishy' } : {}),
       }
       if (replyTarget) {
         payload.replyTo = {
@@ -602,7 +605,7 @@ export default function RoomPage() {
         senderId: user.uid,
         senderName: user.displayName || '친구',
         roomName: room?.name,
-        text: msgText,
+        text: isSquishyTrigger ? '🧸 말랑이를 보냈어요' : msgText,
       })
       setText('')
       setReplyTarget(null)
@@ -1144,6 +1147,13 @@ export default function RoomPage() {
                         myUid={user?.uid}
                         onVote={(i) => extras.votePoll(msg.id, i, msg.pollVotes ?? {})}
                       />
+                    </div>
+                  )
+                }
+                if (msg.messageType === 'squishy') {
+                  return (
+                    <div key={msg.id} className={`flex ${msg.authorId === user?.uid ? 'justify-end' : 'justify-start'}`}>
+                      <SquishyToy />
                     </div>
                   )
                 }

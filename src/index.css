@@ -397,6 +397,30 @@ html, body {
 .rank-event-location { background: rgba(59, 130, 246, 0.12); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.22); font-weight: 600; }
 .dark .rank-event-location { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(96, 165, 250, 0.25); }
 
+.squishy-toy-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; max-width: 220px; }
+.squishy-toy-blob {
+  width: 108px;
+  height: 108px;
+  border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+  background: radial-gradient(circle at 32% 28%, #ffd6ec, #f9a8e8 45%, #e879c9 100%);
+  box-shadow: inset -8px -10px 18px rgba(255, 255, 255, 0.55), inset 8px 10px 20px rgba(190, 40, 140, 0.25), 0 8px 18px rgba(230, 100, 190, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+.squishy-toy-blob:active { cursor: grabbing; }
+.squishy-toy-blob-poked { filter: brightness(1.04); }
+.squishy-toy-face { font-size: 22px; font-weight: 700; color: rgba(120, 20, 90, 0.55); pointer-events: none; }
+.squishy-toy-hint { font-size: 11px; color: var(--text-muted); text-align: center; }
+.dark .squishy-toy-blob {
+  background: radial-gradient(circle at 32% 28%, #f7a8e0, #d768c2 45%, #b23f9c 100%);
+  box-shadow: inset -8px -10px 18px rgba(255, 255, 255, 0.25), inset 8px 10px 20px rgba(60, 10, 45, 0.35), 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
 .chat-banner { border: 1px solid var(--border); }
 .banner-mvp { background: rgba(245, 158, 11, 0.12); color: #b45309; }
 .banner-champion { background: rgba(124, 58, 237, 0.1); color: var(--brand); }
