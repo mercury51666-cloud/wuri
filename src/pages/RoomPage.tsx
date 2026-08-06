@@ -68,7 +68,7 @@ interface Message {
   replyTo?: ReplyTo
   type?: 'rank_event'
   messageType?: 'rank_event' | 'poll'
-  event?: 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion' | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join'
+  event?: 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion' | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join' | 'mission'
   pollQuestion?: string
   pollOptions?: string[]
   pollVotes?: Record<string, string[]>

@@ -392,6 +392,8 @@ html, body {
 .rank-event-mvp, .rank-event-group_goal, .rank-event-weekly_champion { background: rgba(124, 58, 237, 0.1); color: var(--brand); border: 1px solid rgba(124, 58, 237, 0.15); }
 .rank-event-join { background: rgba(34, 197, 94, 0.12); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.22); font-weight: 600; }
 .dark .rank-event-join { background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(74, 222, 128, 0.25); }
+.rank-event-mission { background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.22); font-weight: 600; }
+.dark .rank-event-mission { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.25); }
 
 .chat-banner { border: 1px solid var(--border); }
 .banner-mvp { background: rgba(245, 158, 11, 0.12); color: #b45309; }

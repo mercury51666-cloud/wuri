@@ -3,6 +3,7 @@ import { doc, onSnapshot, setDoc, getDoc, arrayUnion, collection, getDocs, delet
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { awardMissionPoints } from '../utils/roomPoints'
+import { postRankEvent } from '../utils/rankEvents'
 
 // 미션 구성(OOTD+노래)이 예전 버전(랜덤 물건 찾기)과 호환되지 않으므로 버전을 못박아서
 // 문서 키에 넣는다 — 같은 날짜 안에서 미션 내용이 바뀌어도 예전 데이터가 새 미션 칸에
@@ -28,8 +29,8 @@ async function cleanupOldMissions(roomId: string, today: string) {
 }
 
 const MISSIONS = [
-  { emoji: '👗', theme: '오늘의 OOTD', type: 'photo' as const },
-  { emoji: '🎵', theme: '오늘의 추천 노래', type: 'song' as const },
+  { emoji: '👗', theme: '오늘의 OOTD', type: 'photo' as const, notifyLabel: 'OOTD' },
+  { emoji: '🎵', theme: '오늘의 추천 노래', type: 'song' as const, notifyLabel: '오늘의 추천곡' },
 ]
 
 async function uploadToCloudinary(file: File): Promise<string> {
@@ -137,15 +138,24 @@ export default function DailyMission({ roomId }: Props) {
     }
 
     if (!alreadyDone) {
+      const userName = user.displayName ?? user.email ?? '익명'
       const result = await awardMissionPoints(
         roomId,
         user.uid,
-        user.displayName ?? user.email ?? '익명',
+        userName,
         today,
         currentUploads.size >= MISSIONS.length,
       )
       setPointToast(`+${result.gained}점 · ${result.label}`)
       setTimeout(() => setPointToast(''), 2500)
+
+      const mission = MISSIONS[missionIdx]
+      postRankEvent(
+        roomId,
+        { uid: user.uid, name: userName, photoURL: user.photoURL },
+        'mission',
+        `${userName}님이 ${mission.notifyLabel} 미션을 완료하였습니다 ${mission.emoji}`,
+      ).catch(() => {})
     }
   }
 

@@ -3,7 +3,7 @@ import { db } from '../firebase'
 
 export type RankEventKind =
   | 'mute' | 'salute' | 'reprimand' | 'gubo' | 'promotion'
-  | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join'
+  | 'rebellion' | 'mvp' | 'group_goal' | 'weekly_champion' | 'join' | 'mission'
 
 export async function postRankEvent(
   roomId: string,
