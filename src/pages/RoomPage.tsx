@@ -17,6 +17,7 @@ import RankBoard from '../components/RankBoard'
 import LocationMap from '../components/LocationMap'
 import MoodBoard from '../components/MoodBoard'
 import MusicBoard from '../components/MusicBoard'
+import AiChat from '../components/AiChat'
 import RoomBgmPlayer from '../components/RoomBgmPlayer'
 import ScheduleCalendar from '../components/ScheduleCalendar'
 import PhotoGallery from '../components/PhotoGallery'
@@ -1365,6 +1366,7 @@ export default function RoomPage() {
           />
         )}
         {activeTab === 'mission' && roomId && <div className="flex-1 overflow-y-auto p-4"><DailyMission roomId={roomId} /></div>}
+        {activeTab === 'ai' && <AiChat />}
         {/* 위치는 탭 전환 시에도 계속 추적하기 위해 숨김 처리 방식 사용 */}
         {roomId && <div className={`flex-1 overflow-y-auto p-4 ${activeTab !== 'location' ? 'hidden' : ''}`}><LocationMap roomId={roomId} visible={activeTab === 'location'} /></div>}
         {activeTab === 'stats' && roomId && (

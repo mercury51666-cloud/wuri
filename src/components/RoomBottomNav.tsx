@@ -1,10 +1,10 @@
 import { MessageCircle, Image, Calendar, LayoutGrid } from 'lucide-react'
 
 export type PrimaryTab = 'chat' | 'gallery' | 'schedule' | 'more'
-export type MoreSubTab = 'mood' | 'mission' | 'location' | 'stats' | 'music'
+export type MoreSubTab = 'mood' | 'mission' | 'location' | 'stats' | 'music' | 'ai'
 export type RoomTab = PrimaryTab | MoreSubTab
 
-export const MORE_SUB_TABS: MoreSubTab[] = ['mood', 'mission', 'location', 'stats', 'music']
+export const MORE_SUB_TABS: MoreSubTab[] = ['mood', 'mission', 'location', 'stats', 'music', 'ai']
 
 const NAV: { id: PrimaryTab; label: string; Icon: typeof MessageCircle }[] = [
   { id: 'chat', label: '채팅', Icon: MessageCircle },
@@ -55,4 +55,5 @@ export const TAB_TITLES: Record<RoomTab, string> = {
   location: '친구 지도',
   stats: '계급',
   music: '음악',
+  ai: 'AI에게 물어보기',
 }

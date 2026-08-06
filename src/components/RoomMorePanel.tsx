@@ -1,5 +1,5 @@
 import {
-  Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight, Bell, Headphones,
+  Smile, Target, MapPin, Medal, Users, Pencil, ImageIcon, Link2, Moon, Sun, LogOut, ChevronRight, Bell, Headphones, Sparkles,
 } from 'lucide-react'
 import RoomAvatar from './RoomAvatar'
 import RankBadge from './RankBadge'
@@ -40,6 +40,7 @@ const FEATURES: { id: MoreSubTab; label: string; desc: string; Icon: typeof Smil
   { id: 'location', label: '친구 지도', desc: '젠리처럼 위치 보기', Icon: MapPin, color: 'bg-blue-500/10 text-blue-500' },
   { id: 'music', label: '음악', desc: '지금 듣는 중 · 방 BGM', Icon: Headphones, color: 'bg-violet-500/10 text-violet-500' },
   { id: 'stats', label: '계급', desc: '활동 & 순위', Icon: Medal, color: 'bg-emerald-500/10 text-emerald-500' },
+  { id: 'ai', label: 'AI에게 물어보기', desc: '나만 보는 개인 AI', Icon: Sparkles, color: 'bg-fuchsia-500/10 text-fuchsia-500' },
 ]
 
 export default function RoomMorePanel({
