@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  doc, collection, query, orderBy,
+  doc, collection, query, orderBy, limit,
   onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc,
 } from 'firebase/firestore'
+
+/** 채팅방 실시간 구독 메시지 상한 — 전체 로드는 읽기 할당량을 빠르게 소진함 */
+const MESSAGE_SUBSCRIBE_LIMIT = 150
 import { db } from '../firebase'
 import { useAuthState } from '../hooks/useAuthState'
 import { useTheme } from '../contexts/ThemeContext'
@@ -493,10 +496,17 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!roomId) return
-    const q = query(collection(db, 'rooms', roomId, 'messages'), orderBy('createdAt', 'asc'))
+    // 최신 N개만 구독 후 시간순으로 뒤집는다 (asc+limit 는 오래된 쪽만 가져와서 채팅에 부적합)
+    const q = query(
+      collection(db, 'rooms', roomId, 'messages'),
+      orderBy('createdAt', 'desc'),
+      limit(MESSAGE_SUBSCRIBE_LIMIT),
+    )
     return onSnapshot(q, (snap) => {
       const uid = user?.uid
-      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message))
+      const all = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as Message))
+        .reverse()
       setMessages(uid ? all.filter((m) => !(m.hiddenFor ?? []).includes(uid)) : all)
     })
   }, [roomId, user?.uid])

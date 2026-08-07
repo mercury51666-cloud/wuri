@@ -62,6 +62,8 @@ export default function HomePage() {
   })
   const [myLastRead, setMyLastRead] = useState<Record<string, number>>({})
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
+  /** 방별 최근 메시지 캐시 — 읽음 시각이 바뀌어도 Firestore 재구독하지 않도록 분리 */
+  const [recentByRoom, setRecentByRoom] = useState<Record<string, { authorId: string; createdAt: { seconds: number } | null }[]>>({})
 
   const resetCreateForm = () => {
     setRoomName('')
@@ -110,35 +112,49 @@ export default function HomePage() {
     return () => unsubscribe()
   }, [user])
 
+  // 방 목록 객체 참조가 바뀔 때마다 재구독하지 않도록 id 목록만 의존
+  const roomIdsKey = rooms.map((r) => r.id).sort().join(',')
+
   // 각 방의 내 읽음 시각 구독
   useEffect(() => {
-    if (!user || rooms.length === 0) return
-    const unsubs = rooms.map((room) =>
-      onSnapshot(doc(db, 'rooms', room.id, 'readStatus', user.uid), (snap) => {
+    if (!user || !roomIdsKey) return
+    const ids = roomIdsKey.split(',')
+    const unsubs = ids.map((roomId) =>
+      onSnapshot(doc(db, 'rooms', roomId, 'readStatus', user.uid), (snap) => {
         const ts = snap.data()?.lastReadAt as { seconds: number } | undefined
-        setMyLastRead((prev) => ({ ...prev, [room.id]: toMs(ts) }))
+        setMyLastRead((prev) => ({ ...prev, [roomId]: toMs(ts) }))
       }),
     )
     return () => unsubs.forEach((u) => u())
-  }, [user, rooms])
+  }, [user, roomIdsKey])
 
-  // 각 방의 안 읽은 메시지 수 계산
+  // 각 방의 최근 메시지만 구독 (읽음 시각 변경 시 재구독하지 않음 → 읽기 낭비 방지)
   useEffect(() => {
-    if (!user || rooms.length === 0) return
-    const unsubs = rooms.map((room) => {
+    if (!user || !roomIdsKey) return
+    const ids = roomIdsKey.split(',')
+    const unsubs = ids.map((roomId) => {
       const q = query(
-        collection(db, 'rooms', room.id, 'messages'),
+        collection(db, 'rooms', roomId, 'messages'),
         orderBy('createdAt', 'desc'),
-        limit(100),
+        limit(40),
       )
       return onSnapshot(q, (snap) => {
         const msgs = snap.docs.map((d) => d.data() as { authorId: string; createdAt: { seconds: number } | null })
-        const count = countUnreadMessages(msgs, myLastRead[room.id] ?? 0, user.uid)
-        setUnreadCounts((prev) => ({ ...prev, [room.id]: count }))
+        setRecentByRoom((prev) => ({ ...prev, [roomId]: msgs }))
       })
     })
     return () => unsubs.forEach((u) => u())
-  }, [user, rooms, myLastRead])
+  }, [user, roomIdsKey])
+
+  // 읽음 시각/캐시가 바뀔 때만 로컬에서 뱃지 재계산 (추가 Firestore 읽기 없음)
+  useEffect(() => {
+    if (!user) return
+    const next: Record<string, number> = {}
+    for (const room of rooms) {
+      next[room.id] = countUnreadMessages(recentByRoom[room.id] ?? [], myLastRead[room.id] ?? 0, user.uid)
+    }
+    setUnreadCounts(next)
+  }, [user, rooms, myLastRead, recentByRoom])
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()

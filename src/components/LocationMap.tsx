@@ -109,6 +109,19 @@ export default function LocationMap({ roomId, visible = true }: Props) {
   const [, setTick] = useState(0)
   const watchIdRef = useRef<number | null>(null)
   const notifiedSharingRef = useRef(false)
+  /** Firestore 쓰기를 너무 자주 하지 않도록 마지막 업로드 위치/시각 기억 */
+  const lastUploadRef = useRef<{ t: number; lat: number; lng: number } | null>(null)
+
+  const shouldUploadLocation = (lat: number, lng: number) => {
+    const prev = lastUploadRef.current
+    if (!prev) return true
+    const elapsed = Date.now() - prev.t
+    if (elapsed >= 60_000) return true // 최소 1분에 한 번
+    // 대략 위도 0.0003 ≈ 30m
+    const moved =
+      Math.abs(lat - prev.lat) > 0.0003 || Math.abs(lng - prev.lng) > 0.0003
+    return moved && elapsed >= 15_000
+  }
 
   useEffect(() => {
     const ref = collection(db, 'rooms', roomId, 'locations')
@@ -174,6 +187,11 @@ export default function LocationMap({ roomId, visible = true }: Props) {
         setMyCenter({ lat, lng })
         setLoading(false)
         setSharing(true)
+
+        // 지도 내 내 위치는 자주 갱신하되, Firestore 쓰기는 쓰로틀해서 읽기/쓰기 폭주 방지
+        if (!shouldUploadLocation(lat, lng)) return
+        lastUploadRef.current = { t: Date.now(), lat, lng }
+
         await setDoc(doc(db, 'rooms', roomId, 'locations', user.uid), {
           userId: user.uid,
           userName: user.displayName ?? user.email?.split('@')[0] ?? '친구',
@@ -205,7 +223,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
         toast('위치 권한을 켜주면 친구들이 볼 수 있어요 📍')
         setLoading(false)
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15000 }
     )
   }
 
@@ -218,6 +236,7 @@ export default function LocationMap({ roomId, visible = true }: Props) {
     setSharing(false)
     setMyCenter(null)
     notifiedSharingRef.current = false
+    lastUploadRef.current = null
     toast('위치 숨김! 이제 안 보여요 👻')
   }
 

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore'
+import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+
+/** 통계용으로 전체 메시지를 긁으면 할당량이 크게 나간다. 최근 N개만 집계. */
+const STATS_MESSAGE_LIMIT = 400
 
 interface Props {
   roomId: string
@@ -34,7 +37,8 @@ export default function RoomStats({ roomId }: Props) {
 
       const q = query(
         collection(db, 'rooms', roomId, 'messages'),
-        orderBy('createdAt', 'asc')
+        orderBy('createdAt', 'desc'),
+        limit(STATS_MESSAGE_LIMIT),
       )
       const snap = await getDocs(q)
       const countMap: Record<string, { name: string; count: number }> = {}
@@ -80,7 +84,7 @@ export default function RoomStats({ roomId }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-violet-50 dark:bg-violet-900/30 rounded-2xl p-4 text-center">
           <p className="text-3xl font-black text-violet-600 dark:text-violet-400">{total}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">총 메시지</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">최근 메시지</p>
         </div>
         <div className="bg-pink-50 dark:bg-pink-900/30 rounded-2xl p-4 text-center">
           <p className="text-3xl font-black text-pink-600 dark:text-pink-400">{stats.length}</p>
@@ -91,7 +95,7 @@ export default function RoomStats({ roomId }: Props) {
       {/* 멤버별 순위 */}
       <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10">
-          <h3 className="font-bold text-gray-700 dark:text-gray-200 text-sm">💬 메시지 많이 보낸 사람</h3>
+          <h3 className="font-bold text-gray-700 dark:text-gray-200 text-sm">💬 메시지 많이 보낸 사람 <span className="font-normal text-gray-400">(최근 기준)</span></h3>
         </div>
         {stats.length === 0 ? (
           <p className="text-center text-gray-400 dark:text-gray-600 py-6 text-sm">아직 메시지가 없어요</p>
